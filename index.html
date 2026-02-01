@@ -145,7 +145,7 @@
       background: #3a3a3a;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-DYSlz_4I.js"></script>
+  <script type="module" crossorigin src="/assets/index-CVmYpr5o.js"></script>
 </head>
 <body>
   <canvas id="canvas"></canvas>
@@ -253,6 +253,45 @@
     <div class="control-group">
       <label for="disableSticking">Keine Aggregation (nur Kollision)</label>
       <input type="checkbox" id="disableSticking">
+    </div>
+    
+    <!-- Separate On Collision -->
+    <div class="control-group">
+      <label for="separateCollision">Teilchen bei Kollision trennen</label>
+      <input type="checkbox" id="separateCollision">
+    </div>
+    
+    <!-- Adaptive Time Steps -->
+    <div class="control-group">
+      <label for="adaptiveTimeSteps">Adaptive Zeitschritte (konstante FPS)</label>
+      <input type="checkbox" id="adaptiveTimeSteps" checked>
+    </div>
+    
+    <!-- LOD -->
+    <div class="control-group">
+      <label for="useLOD">Level of Detail (LOD)</label>
+      <input type="checkbox" id="useLOD" checked>
+    </div>
+    
+    <!-- Parallel Collision Detection -->
+    <div class="control-group">
+      <label for="parallelCollision">Parallele Kollisionserkennung</label>
+      <input type="checkbox" id="parallelCollision" checked>
+    </div>
+    
+    <!-- Barnes-Hut Algorithm -->
+    <div class="control-group">
+      <label for="barnesHut">Barnes-Hut Algorithmus (O(n log n))</label>
+      <input type="checkbox" id="barnesHut" checked>
+    </div>
+    
+    <!-- Boundary Mode -->
+    <div class="control-group">
+      <label for="boundaryMode">Randverhalten</label>
+      <select id="boundaryMode">
+        <option value="bounce">Abprallen</option>
+        <option value="wrap">Durchgang (Wrap-around)</option>
+      </select>
     </div>
     
     <!-- Brightness -->
