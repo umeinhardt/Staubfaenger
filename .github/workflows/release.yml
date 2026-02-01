@@ -1,0 +1,85 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Wird ausgelöst bei Tags wie v1.0.0, v1.2.3, etc.
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Build Electron app
+        run: npm run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            ## 3D Dust Particle Aggregation Simulation
+            
+            ### Features
+            - 3D particle physics with Newton's mechanics
+            - Adaptive time steps for stable 60 FPS
+            - Barnes-Hut algorithm for efficient gravity computation
+            - Parallel collision detection
+            - Level of Detail (LOD) optimization
+            - Boundary modes: Bounce and Wrap-around
+            
+            ### Performance
+            - 1000+ particles at 60 FPS
+            
+            ### Installation
+            1. Download the appropriate file for your system
+            2. Extract the ZIP file
+            3. Run `Dust Particle Aggregation.exe`
+            
+            ### Changes in this release
+            See commit history for details.
+          draft: false
+          prerelease: false
+
+      - name: Upload Windows Build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/Dust Particle Aggregation Setup 1.0.0.exe
+          asset_name: DustParticleAggregation-Windows-Setup.exe
+          asset_content_type: application/octet-stream
+
+      - name: Zip portable version
+        run: Compress-Archive -Path "./release/win-unpacked/*" -DestinationPath "./release/DustParticleAggregation-Windows-Portable.zip"
+
+      - name: Upload Windows Portable
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/DustParticleAggregation-Windows-Portable.zip
+          asset_name: DustParticleAggregation-Windows-Portable.zip
+          asset_content_type: application/zip
