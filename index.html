@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staubkorn-Aggregationssimulation</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      background: #000;
+      color: #ffffff;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #000;
+      cursor: grab;
+      touch-action: none;
+    }
+    
+    #canvas:active {
+      cursor: grabbing;
+    }
+    
+    #controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(42, 42, 42, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 15px 20px;
+      border-top: 2px solid rgba(58, 58, 58, 0.5);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+    
+    #controls.hidden {
+      transform: translateY(100%);
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 150px;
+    }
+    
+    .control-group label {
+      font-size: 12px;
+      color: #aaa;
+      font-weight: 500;
+    }
+    
+    .control-group input[type="range"] {
+      width: 150px;
+    }
+    
+    .control-group input[type="number"] {
+      width: 150px;
+      padding: 5px;
+      background: #3a3a3a;
+      color: #fff;
+      border: 1px solid #4a4a4a;
+      border-radius: 3px;
+    }
+    
+    .control-group select {
+      padding: 5px;
+      background: #3a3a3a;
+      color: #fff;
+      border: 1px solid #4a4a4a;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    
+    .control-group .value-display {
+      font-size: 11px;
+      color: #888;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+    
+    button {
+      padding: 8px 16px;
+      background: #4a4a4a;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #5a5a5a;
+    }
+    
+    button:active {
+      background: #3a3a3a;
+    }
+    
+    button.primary {
+      background: #0066cc;
+    }
+    
+    button.primary:hover {
+      background: #0077ee;
+    }
+    
+    button.primary:active {
+      background: #0055aa;
+    }
+    
+    button:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+    }
+    
+    .separator {
+      width: 1px;
+      height: 40px;
+      background: #3a3a3a;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  
+  <div id="controls">
+    <!-- Simulation Controls -->
+    <div class="button-group">
+      <button id="playButton" class="primary">Play</button>
+      <button id="pauseButton">Pause</button>
+      <button id="resetButton">Reset</button>
+      <button id="toggleInjectionButton">Injektion stoppen</button>
+    </div>
+    
+    <div class="separator"></div>
+    
+    <!-- Spawn Rate -->
+    <div class="control-group">
+      <label for="spawnRate">Eintrittsrate (Teilchen/s)</label>
+      <input type="range" id="spawnRate" min="0.1" max="10" step="0.1" value="2">
+      <span class="value-display" id="spawnRateValue">2.0</span>
+    </div>
+    
+    <!-- Max Particles -->
+    <div class="control-group">
+      <label for="maxParticles">Max Teilchen (0 = unbegrenzt)</label>
+      <input type="number" id="maxParticles" min="0" max="10000" step="1" value="0">
+      <span class="value-display" id="particlesSpawnedValue">0 / 0</span>
+    </div>
+    
+    <!-- Total Energy Display -->
+    <div class="control-group">
+      <label>Gesamtenergie</label>
+      <span class="value-display" id="totalEnergyValue">0</span>
+    </div>
+    
+    <!-- Mass Range -->
+    <div class="control-group">
+      <label for="massMin">Masse Min</label>
+      <input type="range" id="massMin" min="0.1" max="50" step="0.1" value="1">
+      <span class="value-display" id="massMinValue">1.0</span>
+    </div>
+    
+    <div class="control-group">
+      <label for="massMax">Masse Max</label>
+      <input type="range" id="massMax" min="0.1" max="50" step="0.1" value="10">
+      <span class="value-display" id="massMaxValue">10.0</span>
+    </div>
+    
+    <!-- Energy Range -->
+    <div class="control-group">
+      <label for="energyMin">Energie Min</label>
+      <input type="range" id="energyMin" min="1" max="500" step="1" value="10">
+      <span class="value-display" id="energyMinValue">10</span>
+    </div>
+    
+    <div class="control-group">
+      <label for="energyMax">Energie Max</label>
+      <input type="range" id="energyMax" min="1" max="500" step="1" value="100">
+      <span class="value-display" id="energyMaxValue">100</span>
+    </div>
+    
+    <div class="separator"></div>
+    
+    <!-- Elasticity -->
+    <div class="control-group">
+      <label for="elasticity">Elastizität</label>
+      <input type="range" id="elasticity" min="0" max="1" step="0.01" value="0">
+      <span class="value-display" id="elasticityValue">0.00</span>
+    </div>
+    
+    <!-- Accuracy -->
+    <div class="control-group">
+      <label for="accuracy">Genauigkeit (Schritte)</label>
+      <input type="range" id="accuracy" min="1" max="10" step="1" value="1">
+      <span class="value-display" id="accuracyValue">1</span>
+    </div>
+    
+    <!-- Time Scale -->
+    <div class="control-group">
+      <label for="timeScale">Zeitskala</label>
+      <input type="range" id="timeScale" min="0.1" max="5" step="0.1" value="1">
+      <span class="value-display" id="timeScaleValue">1.0x</span>
+    </div>
+    
+    <div class="separator"></div>
+    
+    <!-- Color Mode -->
+    <div class="control-group">
+      <label for="colorMode">Farbkodierung</label>
+      <select id="colorMode">
+        <option value="mass">Masse</option>
+        <option value="velocity">Geschwindigkeit</option>
+        <option value="energy">Energie</option>
+        <option value="age">Alter</option>
+      </select>
+    </div>
+    
+    <!-- Show Velocity Vectors -->
+    <div class="control-group">
+      <label for="showVelocity">Geschwindigkeitsvektoren</label>
+      <input type="checkbox" id="showVelocity">
+    </div>
+    
+    <!-- Disable Sticking -->
+    <div class="control-group">
+      <label for="disableSticking">Keine Aggregation (nur Kollision)</label>
+      <input type="checkbox" id="disableSticking">
+    </div>
+    
+    <!-- Separate On Collision -->
+    <div class="control-group">
+      <label for="separateCollision">Teilchen bei Kollision trennen</label>
+      <input type="checkbox" id="separateCollision">
+    </div>
+    
+    <!-- Adaptive Time Steps -->
+    <div class="control-group">
+      <label for="adaptiveTimeSteps">Adaptive Zeitschritte (konstante FPS)</label>
+      <input type="checkbox" id="adaptiveTimeSteps" checked>
+    </div>
+    
+    <!-- LOD -->
+    <div class="control-group">
+      <label for="useLOD">Level of Detail (LOD)</label>
+      <input type="checkbox" id="useLOD" checked>
+    </div>
+    
+    <!-- Parallel Collision Detection -->
+    <div class="control-group">
+      <label for="parallelCollision">Parallele Kollisionserkennung</label>
+      <input type="checkbox" id="parallelCollision" checked>
+    </div>
+    
+    <!-- Barnes-Hut Algorithm -->
+    <div class="control-group">
+      <label for="barnesHut">Barnes-Hut Algorithmus (O(n log n))</label>
+      <input type="checkbox" id="barnesHut" checked>
+    </div>
+    
+    <!-- Boundary Mode -->
+    <div class="control-group">
+      <label for="boundaryMode">Randverhalten</label>
+      <select id="boundaryMode">
+        <option value="bounce">Abprallen</option>
+        <option value="wrap">Durchgang (Wrap-around)</option>
+      </select>
+    </div>
+    
+    <!-- Brightness -->
+    <div class="control-group">
+      <label for="brightness">Helligkeit</label>
+      <input type="range" id="brightness" min="0.5" max="3" step="0.1" value="1.5">
+      <span class="value-display" id="brightnessValue">1.5x</span>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.ts"></script>
+  <script>
+    // Auto-hide UI - show only when mouse is at bottom edge
+    document.addEventListener('DOMContentLoaded', () => {
+      let hideTimeout;
+      const controls = document.getElementById('controls');
+      const HIDE_DELAY = 3000; // 3 seconds
+      const BOTTOM_TRIGGER_HEIGHT = 100; // pixels from bottom to trigger show
+      
+      if (!controls) {
+        console.error('Controls element not found!');
+        return;
+      }
+      
+      function showControls() {
+        controls.classList.remove('hidden');
+        resetHideTimer();
+        // Trigger window resize event so canvas adjusts
+        window.dispatchEvent(new Event('resize'));
+      }
+      
+      function hideControls() {
+        controls.classList.add('hidden');
+        // Trigger window resize event so canvas adjusts
+        window.dispatchEvent(new Event('resize'));
+      }
+      
+      function resetHideTimer() {
+        clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(hideControls, HIDE_DELAY);
+      }
+      
+      // Show controls only when mouse is near bottom edge
+      document.addEventListener('mousemove', (e) => {
+        const windowHeight = window.innerHeight;
+        const mouseY = e.clientY;
+        
+        // Check if mouse is in bottom trigger zone
+        if (windowHeight - mouseY < BOTTOM_TRIGGER_HEIGHT) {
+          showControls();
+        }
+      });
+      
+      // Keep controls visible when hovering over them
+      controls.addEventListener('mouseenter', () => {
+        clearTimeout(hideTimeout);
+      });
+      
+      // Restart timer when leaving controls
+      controls.addEventListener('mouseleave', resetHideTimer);
+      
+      // Start hidden
+      console.log('Hiding controls on startup');
+      hideControls();
+      
+      // Trigger resize after a short delay to ensure canvas is properly sized
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 100);
+    });
+  </script>
+</body>
+</html>

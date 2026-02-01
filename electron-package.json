@@ -1,0 +1,5 @@
+{
+  "name": "dust-particle-aggregation-electron",
+  "version": "1.0.0",
+  "main": "electron.js"
+}

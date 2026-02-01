@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staubkorn-Aggregation Bildschirmschoner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+      cursor: none;
+    }
+    
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #000;
+    }
+    
+    /* Exit hint - fades out after 3 seconds */
+    #exitHint {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      color: rgba(255, 255, 255, 0.5);
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      pointer-events: none;
+      animation: fadeOut 3s forwards;
+    }
+    
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="exitHint">Bewegen Sie die Maus oder drücken Sie eine Taste zum Beenden</div>
+  
+  <script type="module">
+    import * as THREE from 'three';
+    import { Vector3D } from './src/core/Vector3D';
+    import { Particle } from './src/core/Particle';
+    import { ParticleManager } from './src/core/ParticleManager';
+    import { CollisionDetector } from './src/core/CollisionDetector';
+    import { PhysicsEngine } from './src/core/PhysicsEngine';
+    import { NewtonianGravity } from './src/core/GravityFormula';
+    import { SimulationEngine } from './src/core/SimulationEngine';
+    import { Renderer } from './src/core/Renderer';
+    import { Camera } from './src/core/Camera';
+    import { Boundary } from './src/core/Boundary';
+
+    // Exit on any user interaction
+    let hasInteracted = false;
+    
+    function exitScreensaver() {
+      if (!hasInteracted) {
+        hasInteracted = true;
+        document.body.style.cursor = 'default';
+        // In a real screensaver, this would close the window
+        // For web version, we'll just show a message
+        document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; color: white; font-family: Arial; font-size: 24px;">Bildschirmschoner beendet. Fenster kann geschlossen werden.</div>';
+      }
+    }
+    
+    // Exit on mouse move (with small threshold to avoid accidental exits)
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let mouseMoveThreshold = 10;
+    
+    document.addEventListener('mousemove', (e) => {
+      const deltaX = Math.abs(e.clientX - lastMouseX);
+      const deltaY = Math.abs(e.clientY - lastMouseY);
+      
+      if (deltaX > mouseMoveThreshold || deltaY > mouseMoveThreshold) {
+        exitScreensaver();
+      }
+      
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+    
+    // Exit on any key press
+    document.addEventListener('keydown', exitScreensaver);
+    
+    // Exit on mouse click
+    document.addEventListener('click', exitScreensaver);
+
+    // Initialize screensaver
+    function initializeScreensaver() {
+      const canvas = document.getElementById('canvas');
+      
+      // Set canvas to full window size
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      // Define boundary based on window size
+      const boundarySize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+      const boundary = new Boundary(
+        new Vector3D(-boundarySize / 2, -boundarySize / 2, -boundarySize / 2),
+        new Vector3D(boundarySize / 2, boundarySize / 2, boundarySize / 2)
+      );
+
+      // Screensaver-optimized configuration
+      const particleSpawnConfig = {
+        spawnRate: 3.0,           // More particles for visual interest
+        massRange: [1, 10],
+        energyRange: [10, 100],
+        maxParticles: 100         // Limit for performance
+      };
+
+      const simulationConfig = {
+        targetFPS: 60,
+        timeScale: 1.0,
+        accuracySteps: 1
+      };
+
+      const renderConfig = {
+        colorMode: 'velocity',    // Velocity coloring looks nice
+        showVelocityVectors: false
+      };
+
+      // Initialize components
+      const gravitationalConstant = 1.0;
+      const epsilon = 0.01;
+      const gravityFormula = new NewtonianGravity(gravitationalConstant, epsilon);
+
+      const particleManager = new ParticleManager(boundary, particleSpawnConfig);
+      const collisionDetector = new CollisionDetector(20);
+      const physicsEngine = new PhysicsEngine(gravityFormula, 0);
+      
+      const camera = new Camera(canvas, boundary);
+      const renderer = new Renderer(canvas, renderConfig, camera.getCamera());
+
+      // Resize handler
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        renderer.resize(canvas.width, canvas.height);
+        camera.updateAspectRatio(canvas.width, canvas.height);
+      }
+      
+      window.addEventListener('resize', resizeCanvas);
+
+      // Initialize and start simulation
+      const simulationEngine = new SimulationEngine(
+        particleManager,
+        collisionDetector,
+        physicsEngine,
+        renderer,
+        camera,
+        simulationConfig
+      );
+
+      // Auto-rotate camera slowly for dynamic view
+      let cameraAngle = 0;
+      const cameraRotationSpeed = 0.05; // radians per second
+      
+      function updateCamera() {
+        if (!hasInteracted) {
+          cameraAngle += cameraRotationSpeed * 0.016; // Assuming ~60 FPS
+          
+          const distance = boundarySize * 1.5;
+          const centerX = 0;
+          const centerY = 0;
+          const centerZ = 0;
+          
+          // Circular camera movement
+          const camX = centerX + Math.cos(cameraAngle) * distance * 0.7;
+          const camY = centerY + distance * 0.5;
+          const camZ = centerZ + Math.sin(cameraAngle) * distance * 0.7;
+          
+          camera.getCamera().position.set(camX, camY, camZ);
+          camera.getControls().target.set(centerX, centerY, centerZ);
+          camera.getControls().update();
+          
+          requestAnimationFrame(updateCamera);
+        }
+      }
+      
+      // Start camera animation
+      updateCamera();
+      
+      // Start simulation
+      simulationEngine.start();
+      
+      console.log('Bildschirmschoner gestartet');
+    }
+
+    // Start when page loads
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeScreensaver);
+    } else {
+      initializeScreensaver();
+    }
+  </script>
+</body>
+</html>

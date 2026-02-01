@@ -1,0 +1,55 @@
+{
+  "name": "dust-particle-aggregation",
+  "version": "1.0.0",
+  "description": "3D physics simulation of dust particle aggregation",
+  "type": "module",
+  "main": "electron.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --project tsconfig.build.json && vite build",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "electron:dev": "electron .",
+    "electron:build": "npm run build && electron-builder",
+    "serve": "node serve-dist.cjs",
+    "start": "npm run build && npm run serve",
+    "dist:zip": "node -e \"require('child_process').execSync('create-distribution.bat', {stdio:'inherit'})\"",
+    "dist:standalone": "node -e \"require('child_process').execSync('create-standalone.bat', {stdio:'inherit'})\"",
+    "deploy": "npm run build && gh-pages -d dist"
+  },
+  "build": {
+    "appId": "com.dustparticle.aggregation",
+    "productName": "Dust Particle Aggregation",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron.cjs"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico",
+      "sign": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.4.0",
+    "fast-check": "^3.15.0",
+    "gh-pages": "^6.3.0",
+    "jsdom": "^27.4.0",
+    "typescript": "^5.3.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@types/three": "^0.182.0",
+    "three": "^0.182.0"
+  }
+}
