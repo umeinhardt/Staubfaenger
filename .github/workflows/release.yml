@@ -7,7 +7,11 @@ on:
 
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
 
     steps:
       - name: Checkout code
@@ -28,6 +32,56 @@ jobs:
         run: npm run electron:build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows Installer
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe
+
+      - name: Upload Windows Portable
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: release/win-unpacked/
+
+      - name: Upload macOS DMG
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: release/*.dmg
+
+      - name: Upload macOS ZIP
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-zip
+          path: release/mac/*.zip
+
+      - name: Upload Linux AppImage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: release/*.AppImage
+
+      - name: Upload Linux DEB
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: release/*.deb
+
+  create-release:
+    needs: release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
 
       - name: Create Release
         id: create_release
@@ -51,28 +105,43 @@ jobs:
             ### Performance
             - 1000+ particles at 60 FPS
             
+            ### Downloads
+            
+            **Windows:**
+            - Setup.exe - Installer
+            - Portable ZIP - No installation required
+            
+            **macOS:**
+            - DMG - Drag & Drop installer
+            - ZIP - Portable version
+            
+            **Linux:**
+            - AppImage - Universal Linux app
+            - DEB - Debian/Ubuntu package
+            
             ### Installation
-            1. Download the appropriate file for your system
-            2. Extract the ZIP file
-            3. Run `Dust Particle Aggregation.exe`
+            
+            **Windows:** Download Setup.exe and run it
+            **macOS:** Download DMG, open it, drag app to Applications
+            **Linux:** Download AppImage, make executable, run it
             
             ### Changes in this release
             See commit history for details.
           draft: false
           prerelease: false
 
-      - name: Upload Windows Build
+      - name: Upload Windows Setup
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/Dust Particle Aggregation Setup 1.0.0.exe
+          asset_path: ./windows-installer/Dust Particle Aggregation Setup 1.0.0.exe
           asset_name: DustParticleAggregation-Windows-Setup.exe
           asset_content_type: application/octet-stream
 
-      - name: Zip portable version
-        run: Compress-Archive -Path "./release/win-unpacked/*" -DestinationPath "./release/DustParticleAggregation-Windows-Portable.zip"
+      - name: Zip Windows Portable
+        run: cd windows-portable && zip -r ../DustParticleAggregation-Windows-Portable.zip .
 
       - name: Upload Windows Portable
         uses: actions/upload-release-asset@v1
@@ -80,6 +149,46 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/DustParticleAggregation-Windows-Portable.zip
+          asset_path: ./DustParticleAggregation-Windows-Portable.zip
           asset_name: DustParticleAggregation-Windows-Portable.zip
           asset_content_type: application/zip
+
+      - name: Upload macOS DMG
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./macos-dmg/Dust Particle Aggregation-1.0.0.dmg
+          asset_name: DustParticleAggregation-macOS.dmg
+          asset_content_type: application/octet-stream
+
+      - name: Upload macOS ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./macos-zip/Dust Particle Aggregation-1.0.0-mac.zip
+          asset_name: DustParticleAggregation-macOS.zip
+          asset_content_type: application/zip
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./linux-appimage/Dust Particle Aggregation-1.0.0.AppImage
+          asset_name: DustParticleAggregation-Linux.AppImage
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux DEB
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./linux-deb/dust-particle-aggregation_1.0.0_amd64.deb
+          asset_name: DustParticleAggregation-Linux.deb
+          asset_content_type: application/octet-stream

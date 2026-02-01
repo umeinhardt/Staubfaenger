@@ -32,6 +32,29 @@
       "icon": "icon.ico",
       "sign": null
     },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.education",
+      "icon": "icon.icns"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Education"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
