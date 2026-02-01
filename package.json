@@ -2,6 +2,7 @@
   "name": "dust-particle-aggregation",
   "version": "1.0.0",
   "description": "3D physics simulation of dust particle aggregation",
+  "author": "umeinhardt",
   "type": "module",
   "main": "electron.cjs",
   "scripts": {
@@ -28,8 +29,7 @@
       "electron.cjs"
     ],
     "win": {
-      "target": "nsis",
-      "sign": null
+      "target": "nsis"
     },
     "mac": {
       "target": ["dmg", "zip"],
