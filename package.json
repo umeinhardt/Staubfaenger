@@ -29,13 +29,11 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "icon.ico",
       "sign": null
     },
     "mac": {
       "target": ["dmg", "zip"],
-      "category": "public.app-category.education",
-      "icon": "icon.icns"
+      "category": "public.app-category.education"
     },
     "dmg": {
       "contents": [
