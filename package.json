@@ -2,7 +2,10 @@
   "name": "dust-particle-aggregation",
   "version": "1.0.0",
   "description": "3D physics simulation of dust particle aggregation",
-  "author": "umeinhardt",
+  "author": {
+    "name": "umeinhardt",
+    "email": "umeinhardt@users.noreply.github.com"
+  },
   "type": "module",
   "main": "electron.cjs",
   "scripts": {
