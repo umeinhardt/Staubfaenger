@@ -2,6 +2,26 @@
 
 Eine 3D-Physiksimulation zur Darstellung der Aggregation von Staubkörnern unter Gravitationseinfluss mit **Multi-Threading** und **Code-Optimierung**.
 
+## 🚀 Download & Installation
+
+### Desktop-App (Windows, Mac, Linux)
+
+Lade die neueste Version für dein Betriebssystem herunter:
+
+👉 **[Releases auf GitHub](https://github.com/umeinhardt/Staubfaenger/releases)**
+
+- **Windows**: `Dust Particle Aggregation Setup.exe`
+- **macOS**: `Dust Particle Aggregation.dmg`
+- **Linux**: `Dust Particle Aggregation.AppImage` oder `.deb`
+
+### Live-Demo im Browser
+
+Probiere die Simulation direkt im Browser aus:
+
+👉 **[https://umeinhardt.github.io/Staubfaenger/](https://umeinhardt.github.io/Staubfaenger/)**
+
+Keine Installation erforderlich!
+
 ## ✨ Features
 
 - 🎮 **Interaktive 3D-Visualisierung** mit Three.js
@@ -72,7 +92,18 @@ npm run build
 ## Technologie-Stack
 
 - **TypeScript**: Typsichere Entwicklung
+- **Three.js**: 3D-Rendering
 - **Vite**: Build-Tool und Entwicklungsserver
+- **Electron**: Desktop-App Framework
 - **Vitest**: Test-Framework
 - **fast-check**: Property-Based Testing
-- **HTML5 Canvas**: Rendering
+
+## 📦 Releases erstellen
+
+Für Maintainer: Siehe [RELEASE_ANLEITUNG.md](RELEASE_ANLEITUNG.md) für Details zum Erstellen neuer Releases mit automatischen Installern.
+
+## 📚 Weitere Dokumentation
+
+- [GitHub Setup & Release-Anleitung](GITHUB_SETUP.md)
+- [Build-Anweisungen](BUILD_INSTRUCTIONS.md)
+- [Performance-Optimierungen](PERFORMANCE_OPTIMIZATION.md)

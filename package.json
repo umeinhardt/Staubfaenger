@@ -15,11 +15,15 @@
     "test:watch": "vitest",
     "electron:dev": "electron .",
     "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:linux": "npm run build && electron-builder --linux",
+    "electron:build:all": "npm run build && electron-builder --win --mac --linux",
     "serve": "node serve-dist.cjs",
     "start": "npm run build && npm run serve",
     "dist:zip": "node -e \"require('child_process').execSync('create-distribution.bat', {stdio:'inherit'})\"",
     "dist:standalone": "node -e \"require('child_process').execSync('create-standalone.bat', {stdio:'inherit'})\"",
-    "deploy": "npm run build && gh-pages -d dist"
+    "deploy": "cross-env GITHUB_PAGES=true npm run build && gh-pages -d dist"
   },
   "build": {
     "appId": "com.dustparticle.aggregation",
@@ -32,10 +36,14 @@
       "electron.cjs"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "signAndEditExecutable": false
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.education"
     },
     "dmg": {
@@ -53,7 +61,10 @@
       ]
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Education"
     },
     "nsis": {
@@ -63,6 +74,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "cross-env": "^10.1.0",
     "electron": "^40.0.0",
     "electron-builder": "^26.4.0",
     "fast-check": "^3.15.0",

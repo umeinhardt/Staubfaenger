@@ -5,207 +5,93 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+  release:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
     steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            ## 3D Dust Particle Aggregation Simulation
-            
-            ### ✨ Features
-            - 3D particle physics with Newton's mechanics
-            - Adaptive time steps for stable 60 FPS
-            - Barnes-Hut algorithm for O(n log n) gravity computation
-            - Parallel collision detection using Web Workers
-            - Level of Detail (LOD) optimization
-            - Boundary modes: Bounce and Wrap-around
-            
-            ### 🚀 Performance
-            - 1000+ particles at 60 FPS
-            
-            ### 📦 Downloads
-            
-            Choose the right version for your system:
-            
-            **Windows:**
-            - `DustParticleAggregation-Windows-Setup.exe` - Installer (recommended)
-            - `DustParticleAggregation-Windows-Portable.zip` - No installation required
-            
-            **macOS:**
-            - `DustParticleAggregation-macOS.dmg` - Drag & Drop installer (recommended)
-            - `DustParticleAggregation-macOS.zip` - Portable version
-            
-            **Linux:**
-            - `DustParticleAggregation-Linux.AppImage` - Universal (recommended)
-            - `DustParticleAggregation-Linux.deb` - Debian/Ubuntu package
-            
-            ### 🌐 Try it online
-            
-            No download needed: https://umeinhardt.github.io/Staubfaenger/
-            
-            ### 📝 Changes
-            
-            See commit history for details.
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Build Electron app (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run electron:build:win
+      
+      - name: Build Electron app (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run electron:build:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      
+      - name: Build Electron app (Linux)
+        if: matrix.os == 'linux-latest'
+        run: npm run electron:build:linux
+      
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe
+      
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: |
+            release/*.dmg
+            release/*.zip
+      
+      - name: Upload artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installer
+          path: |
+            release/*.AppImage
+            release/*.deb
+  
+  create-release:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/windows-installer/*
+            artifacts/macos-installer/*
+            artifacts/linux-installer/*
           draft: false
           prerelease: false
-
-  build-windows:
-    needs: create-release
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - run: npm ci
-      - run: npm run build
-      - run: npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Find installer
-        id: find_installer
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem -Path release -Filter "*.exe" | Select-Object -First 1
-          echo "installer_path=$($installer.FullName)" >> $env:GITHUB_OUTPUT
-          echo "installer_name=$($installer.Name)" >> $env:GITHUB_OUTPUT
-      
-      - name: Upload Windows Installer
-        uses: actions/upload-release-asset@v1
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_installer.outputs.installer_path }}
-          asset_name: DustParticleAggregation-Windows-Setup.exe
-          asset_content_type: application/octet-stream
-      
-      - name: Zip portable version
-        shell: pwsh
-        run: Compress-Archive -Path "release/win-unpacked/*" -DestinationPath "DustParticleAggregation-Windows-Portable.zip"
-      
-      - name: Upload Windows Portable
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./DustParticleAggregation-Windows-Portable.zip
-          asset_name: DustParticleAggregation-Windows-Portable.zip
-          asset_content_type: application/zip
-
-  build-macos:
-    needs: create-release
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - run: npm ci
-      - run: npm run build
-      - run: npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Find DMG
-        id: find_dmg
-        run: |
-          dmg=$(find release -name "*.dmg" | head -n 1)
-          echo "dmg_path=$dmg" >> $GITHUB_OUTPUT
-      
-      - name: Upload macOS DMG
-        if: steps.find_dmg.outputs.dmg_path != ''
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_dmg.outputs.dmg_path }}
-          asset_name: DustParticleAggregation-macOS.dmg
-          asset_content_type: application/octet-stream
-      
-      - name: Find ZIP
-        id: find_zip
-        run: |
-          zip=$(find release -name "*-mac.zip" | head -n 1)
-          echo "zip_path=$zip" >> $GITHUB_OUTPUT
-      
-      - name: Upload macOS ZIP
-        if: steps.find_zip.outputs.zip_path != ''
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_zip.outputs.zip_path }}
-          asset_name: DustParticleAggregation-macOS.zip
-          asset_content_type: application/zip
-
-  build-linux:
-    needs: create-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - run: npm ci
-      - run: npm run build
-      - run: npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Find AppImage
-        id: find_appimage
-        run: |
-          appimage=$(find release -name "*.AppImage" | head -n 1)
-          echo "appimage_path=$appimage" >> $GITHUB_OUTPUT
-      
-      - name: Upload Linux AppImage
-        if: steps.find_appimage.outputs.appimage_path != ''
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_appimage.outputs.appimage_path }}
-          asset_name: DustParticleAggregation-Linux.AppImage
-          asset_content_type: application/octet-stream
-      
-      - name: Find DEB
-        id: find_deb
-        run: |
-          deb=$(find release -name "*.deb" | head -n 1)
-          echo "deb_path=$deb" >> $GITHUB_OUTPUT
-      
-      - name: Upload Linux DEB
-        if: steps.find_deb.outputs.deb_path != ''
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_deb.outputs.deb_path }}
-          asset_name: DustParticleAggregation-Linux.deb
-          asset_content_type: application/vnd.debian.binary-package
