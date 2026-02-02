@@ -28,6 +28,7 @@
   "build": {
     "appId": "com.dustparticle.aggregation",
     "productName": "Dust Particle Aggregation",
+    "publish": null,
     "directories": {
       "output": "release"
     },
