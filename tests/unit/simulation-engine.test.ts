@@ -47,22 +47,48 @@ class MockHTMLCanvasElement {
         canvas: this,
         drawingBufferWidth: this.width,
         drawingBufferHeight: this.height,
-        getParameter: vi.fn((param) => {
+        getParameter: (param: number) => {
           // Return mock values for common WebGL parameters
-          if (param === 0x8B4C) return 16; // MAX_VERTEX_ATTRIBS
-          if (param === 0x8869) return 16; // MAX_TEXTURE_IMAGE_UNITS
-          if (param === 0x8DFB) return 16; // MAX_COLOR_ATTACHMENTS
-          if (param === 0x8824) return 16384; // MAX_TEXTURE_SIZE
-          if (param === 0x851C) return 16384; // MAX_CUBE_MAP_TEXTURE_SIZE
-          if (param === 0x8073) return 8192; // MAX_VIEWPORT_DIMS
+          // String parameters
+          if (param === 0x1F00 || param === 7936) return 'WebGL 2.0'; // VERSION
+          if (param === 0x1F01 || param === 35724) return 'WebGL GLSL ES 3.00'; // SHADING_LANGUAGE_VERSION
+          if (param === 0x1F02 || param === 7937) return 'WebKit'; // VENDOR
+          if (param === 0x1F03 || param === 7938) return 'WebKit WebGL'; // RENDERER
+          // Numeric parameters
+          if (param === 0x8B4C || param === 35660) return 16; // MAX_VERTEX_ATTRIBS
+          if (param === 0x8869 || param === 34921) return 16; // MAX_TEXTURE_IMAGE_UNITS
+          if (param === 0x8DFB || param === 36347) return 16; // MAX_COLOR_ATTACHMENTS
+          if (param === 0x8824 || param === 34852) return 16384; // MAX_TEXTURE_SIZE
+          if (param === 0x851C || param === 34076) return 16384; // MAX_CUBE_MAP_TEXTURE_SIZE
+          if (param === 0x8073 || param === 32883) return new Int32Array([8192, 8192]); // MAX_VIEWPORT_DIMS
+          if (param === 0x0D33 || param === 3379) return 4; // MAX_TEXTURE_STACK_DEPTH
+          if (param === 0x80E9 || param === 33001) return 4; // MAX_RENDERBUFFER_SIZE
+          if (param === 0x8872 || param === 34930) return 8; // MAX_COMBINED_TEXTURE_IMAGE_UNITS
+          if (param === 0x8B4D || param === 35661) return 16; // MAX_VERTEX_UNIFORM_VECTORS
+          if (param === 0x8DFD || param === 36349) return 16; // MAX_VARYING_VECTORS
+          if (param === 0x8B49 || param === 35657) return 16; // MAX_FRAGMENT_UNIFORM_VECTORS
+          if (param === 0x8B4A || param === 35658) return 8; // MAX_VERTEX_TEXTURE_IMAGE_UNITS
+          // Default
           return 0;
-        }),
+        },
         getShaderPrecisionFormat: vi.fn(() => ({
           precision: 23,
           rangeMin: 127,
           rangeMax: 127
         })),
-        getExtension: vi.fn(() => null),
+        getExtension: vi.fn((name) => {
+          // Return mock extensions
+          if (name === 'WEBGL_depth_texture') return {};
+          if (name === 'OES_texture_float') return {};
+          if (name === 'OES_texture_half_float') return {};
+          if (name === 'OES_standard_derivatives') return {};
+          if (name === 'EXT_shader_texture_lod') return {};
+          if (name === 'EXT_texture_filter_anisotropic') return {};
+          if (name === 'WEBGL_compressed_texture_s3tc') return {};
+          if (name === 'WEBGL_compressed_texture_pvrtc') return {};
+          if (name === 'WEBGL_compressed_texture_etc1') return {};
+          return null;
+        }),
         getContextAttributes: vi.fn(() => ({
           alpha: true,
           antialias: true,
@@ -139,7 +165,35 @@ class MockHTMLCanvasElement {
         deleteBuffer: vi.fn(),
         deleteTexture: vi.fn(),
         deleteFramebuffer: vi.fn(),
-        deleteRenderbuffer: vi.fn()
+        deleteRenderbuffer: vi.fn(),
+        isContextLost: vi.fn(() => false),
+        getSupportedExtensions: vi.fn(() => [
+          'WEBGL_depth_texture',
+          'OES_texture_float',
+          'OES_texture_half_float',
+          'OES_standard_derivatives',
+          'EXT_shader_texture_lod',
+          'EXT_texture_filter_anisotropic'
+        ]),
+        pixelStorei: vi.fn(),
+        readPixels: vi.fn(),
+        texSubImage2D: vi.fn(),
+        compressedTexImage2D: vi.fn(),
+        compressedTexSubImage2D: vi.fn(),
+        generateMipmap: vi.fn(),
+        activeTexture: vi.fn(),
+        blendFuncSeparate: vi.fn(),
+        blendEquationSeparate: vi.fn(),
+        stencilFunc: vi.fn(),
+        stencilOp: vi.fn(),
+        stencilFuncSeparate: vi.fn(),
+        stencilOpSeparate: vi.fn(),
+        finish: vi.fn(),
+        flush: vi.fn(),
+        hint: vi.fn(),
+        isEnabled: vi.fn(() => false),
+        depthRange: vi.fn(),
+        sampleCoverage: vi.fn()
       };
     }
     return null;
