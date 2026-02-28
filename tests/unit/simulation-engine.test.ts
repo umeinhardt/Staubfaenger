@@ -1,38 +1,141 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SimulationEngine, SimulationConfig } from '../../src/core/SimulationEngine';
-import { ParticleManager, ParticleSpawnConfig, Rectangle } from '../../src/core/ParticleManager';
+import { ParticleManager, ParticleSpawnConfig } from '../../src/core/ParticleManager';
 import { CollisionDetector } from '../../src/core/CollisionDetector';
 import { PhysicsEngine } from '../../src/core/PhysicsEngine';
 import { Renderer, RenderConfig } from '../../src/core/Renderer';
 import { NewtonianGravity } from '../../src/core/GravityFormula';
+import { Boundary } from '../../src/core/Boundary';
+import { Vector3D } from '../../src/core/Vector3D';
 
-// Mock canvas and context
-class MockCanvasRenderingContext2D {
-  fillStyle: string = '#000000';
-  strokeStyle: string = '#000000';
-  lineWidth: number = 1;
-  
-  fillRect = vi.fn();
-  beginPath = vi.fn();
-  arc = vi.fn();
-  fill = vi.fn();
-  moveTo = vi.fn();
-  lineTo = vi.fn();
-  stroke = vi.fn();
-}
-
+// Mock canvas and context with all required methods for Three.js WebGLRenderer
 class MockHTMLCanvasElement {
   width: number = 800;
   height: number = 600;
-  private context: MockCanvasRenderingContext2D;
+  style: any = {};
+  
+  addEventListener = vi.fn();
+  removeEventListener = vi.fn();
+  dispatchEvent = vi.fn();
+  getBoundingClientRect = vi.fn(() => ({
+    left: 0,
+    top: 0,
+    width: this.width,
+    height: this.height,
+    right: this.width,
+    bottom: this.height,
+    x: 0,
+    y: 0,
+    toJSON: () => ({})
+  }));
+  getRootNode = vi.fn(() => ({
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn()
+  }));
+  
+  ownerDocument = {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    createElement: vi.fn(() => ({
+      getContext: vi.fn(() => null)
+    }))
+  };
 
-  constructor() {
-    this.context = new MockCanvasRenderingContext2D();
-  }
-
-  getContext(contextType: string): MockCanvasRenderingContext2D | null {
-    if (contextType === '2d') {
-      return this.context;
+  getContext(contextType: string, options?: any): any {
+    if (contextType === 'webgl' || contextType === 'webgl2') {
+      return {
+        canvas: this,
+        drawingBufferWidth: this.width,
+        drawingBufferHeight: this.height,
+        getParameter: vi.fn((param) => {
+          // Return mock values for common WebGL parameters
+          if (param === 0x8B4C) return 16; // MAX_VERTEX_ATTRIBS
+          if (param === 0x8869) return 16; // MAX_TEXTURE_IMAGE_UNITS
+          if (param === 0x8DFB) return 16; // MAX_COLOR_ATTACHMENTS
+          if (param === 0x8824) return 16384; // MAX_TEXTURE_SIZE
+          if (param === 0x851C) return 16384; // MAX_CUBE_MAP_TEXTURE_SIZE
+          if (param === 0x8073) return 8192; // MAX_VIEWPORT_DIMS
+          return 0;
+        }),
+        getExtension: vi.fn(() => null),
+        getContextAttributes: vi.fn(() => ({
+          alpha: true,
+          antialias: true,
+          depth: true,
+          stencil: false,
+          premultipliedAlpha: true,
+          preserveDrawingBuffer: false
+        })),
+        createShader: vi.fn(() => ({})),
+        shaderSource: vi.fn(),
+        compileShader: vi.fn(),
+        getShaderParameter: vi.fn(() => true),
+        createProgram: vi.fn(() => ({})),
+        attachShader: vi.fn(),
+        linkProgram: vi.fn(),
+        getProgramParameter: vi.fn(() => true),
+        useProgram: vi.fn(),
+        createBuffer: vi.fn(() => ({})),
+        bindBuffer: vi.fn(),
+        bufferData: vi.fn(),
+        createTexture: vi.fn(() => ({})),
+        bindTexture: vi.fn(),
+        texImage2D: vi.fn(),
+        texImage3D: vi.fn(),
+        texParameteri: vi.fn(),
+        createFramebuffer: vi.fn(() => ({})),
+        bindFramebuffer: vi.fn(),
+        framebufferTexture2D: vi.fn(),
+        createRenderbuffer: vi.fn(() => ({})),
+        bindRenderbuffer: vi.fn(),
+        renderbufferStorage: vi.fn(),
+        framebufferRenderbuffer: vi.fn(),
+        checkFramebufferStatus: vi.fn(() => 0x8CD5), // FRAMEBUFFER_COMPLETE
+        viewport: vi.fn(),
+        clear: vi.fn(),
+        clearColor: vi.fn(),
+        clearDepth: vi.fn(),
+        clearStencil: vi.fn(),
+        enable: vi.fn(),
+        disable: vi.fn(),
+        depthFunc: vi.fn(),
+        depthMask: vi.fn(),
+        colorMask: vi.fn(),
+        stencilMask: vi.fn(),
+        blendFunc: vi.fn(),
+        blendEquation: vi.fn(),
+        cullFace: vi.fn(),
+        frontFace: vi.fn(),
+        lineWidth: vi.fn(),
+        polygonOffset: vi.fn(),
+        scissor: vi.fn(),
+        drawArrays: vi.fn(),
+        drawElements: vi.fn(),
+        getUniformLocation: vi.fn(() => ({})),
+        uniform1f: vi.fn(),
+        uniform1i: vi.fn(),
+        uniform2f: vi.fn(),
+        uniform3f: vi.fn(),
+        uniform4f: vi.fn(),
+        uniformMatrix4fv: vi.fn(),
+        getAttribLocation: vi.fn(() => 0),
+        vertexAttribPointer: vi.fn(),
+        enableVertexAttribArray: vi.fn(),
+        disableVertexAttribArray: vi.fn(),
+        getShaderInfoLog: vi.fn(() => ''),
+        getProgramInfoLog: vi.fn(() => ''),
+        getActiveUniform: vi.fn(() => ({ name: 'test', size: 1, type: 0x1406 })),
+        getActiveAttrib: vi.fn(() => ({ name: 'test', size: 1, type: 0x1406 })),
+        createVertexArray: vi.fn(() => ({})),
+        bindVertexArray: vi.fn(),
+        deleteVertexArray: vi.fn(),
+        deleteShader: vi.fn(),
+        deleteProgram: vi.fn(),
+        deleteBuffer: vi.fn(),
+        deleteTexture: vi.fn(),
+        deleteFramebuffer: vi.fn(),
+        deleteRenderbuffer: vi.fn()
+      };
     }
     return null;
   }
@@ -51,27 +154,31 @@ describe('SimulationEngine', () => {
     const canvas = new MockHTMLCanvasElement();
 
     // Create bounds
-    const bounds: Rectangle = { x: 0, y: 0, width: 1000, height: 1000 };
+    const bounds = new Boundary(
+      new Vector3D(0, 0, 0),
+      new Vector3D(1000, 1000, 1000)
+    );
 
     // Create particle spawn config
     const spawnConfig: ParticleSpawnConfig = {
       spawnRate: 1,
       massRange: [1, 10],
-      energyRange: [10, 100]
+      energyRange: [10, 100],
+      maxParticles: 0
     };
 
     // Create render config
     const renderConfig: RenderConfig = {
       colorMode: 'mass',
-      showVelocityVectors: false,
-      showRotation: false
+      showVelocityVectors: false
     };
 
     // Create simulation config
     config = {
       targetFPS: 60,
       timeScale: 1.0,
-      accuracySteps: 1
+      accuracySteps: 1,
+      adaptiveTimeSteps: false
     };
 
     // Create components
@@ -86,7 +193,8 @@ describe('SimulationEngine', () => {
       collisionDetector,
       physicsEngine,
       renderer,
-      config
+      config,
+      'cpu' // Default physics engine type
     );
   });
 

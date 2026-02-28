@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as fc from 'fast-check';
 import { SimulationEngine, SimulationConfig } from '../../src/core/SimulationEngine';
-import { ParticleManager, ParticleSpawnConfig, Rectangle } from '../../src/core/ParticleManager';
+import { ParticleManager, ParticleSpawnConfig } from '../../src/core/ParticleManager';
 import { CollisionDetector } from '../../src/core/CollisionDetector';
 import { PhysicsEngine } from '../../src/core/PhysicsEngine';
 import { Renderer, RenderConfig } from '../../src/core/Renderer';
 import { NewtonianGravity } from '../../src/core/GravityFormula';
+import { Boundary } from '../../src/core/Boundary';
+import { Vector3D } from '../../src/core/Vector3D';
 import { JSDOM } from 'jsdom';
 
 // Feature: dust-particle-aggregation, Property 11: Konfigurationsänderungen wirken sofort
@@ -44,11 +46,15 @@ describe('Property 11: Konfigurationsänderungen wirken sofort', () => {
   });
 
   const createTestSetup = () => {
-    const bounds: Rectangle = { x: 0, y: 0, width: 800, height: 600 };
+    const bounds = new Boundary(
+      new Vector3D(0, 0, 0),
+      new Vector3D(800, 600, 400)
+    );
     const spawnConfig: ParticleSpawnConfig = {
       spawnRate: 2,
       massRange: [1, 10],
-      energyRange: [10, 100]
+      energyRange: [10, 100],
+      maxParticles: 0
     };
     const particleManager = new ParticleManager(bounds, spawnConfig);
     const collisionDetector = new CollisionDetector(50);

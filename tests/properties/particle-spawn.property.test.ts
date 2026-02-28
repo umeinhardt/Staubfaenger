@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { ParticleManager, ParticleSpawnConfig, Rectangle } from '../../src/core/ParticleManager';
+import { ParticleManager, ParticleSpawnConfig } from '../../src/core/ParticleManager';
+import { Boundary } from '../../src/core/Boundary';
+import { Vector3D } from '../../src/core/Vector3D';
 
 // Feature: dust-particle-aggregation, Property 1: Teilcheneintritt-Validierung
 // **Validates: Requirements 3.2, 3.3, 3.4, 3.5**
@@ -18,7 +20,10 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           const massRange: [number, number] = minMass < maxMass ? [minMass, maxMass] : [maxMass, minMass];
           const energyRange: [number, number] = minEnergy < maxEnergy ? [minEnergy, maxEnergy] : [maxEnergy, minEnergy];
           
-          const bounds: Rectangle = { x: 0, y: 0, width: 800, height: 600 };
+          const bounds = new Boundary(
+            new Vector3D(0, 0, 0),
+            new Vector3D(800, 600, 400)
+          );
           const config: ParticleSpawnConfig = {
             spawnRate: 10,
             massRange,
@@ -31,15 +36,17 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           
           if (!particle) return; // Skip if max particles reached
           
-          // Check if particle is at one of the edges
-          const atLeftEdge = Math.abs(particle.position.x - bounds.x) < 0.001;
-          const atRightEdge = Math.abs(particle.position.x - (bounds.x + bounds.width)) < 0.001;
-          const atTopEdge = Math.abs(particle.position.y - bounds.y) < 0.001;
-          const atBottomEdge = Math.abs(particle.position.y - (bounds.y + bounds.height)) < 0.001;
+          // Check if particle is at one of the 6 faces
+          const atLeftFace = Math.abs(particle.position.x - 0) < 0.001;
+          const atRightFace = Math.abs(particle.position.x - 800) < 0.001;
+          const atBottomFace = Math.abs(particle.position.y - 0) < 0.001;
+          const atTopFace = Math.abs(particle.position.y - 600) < 0.001;
+          const atFrontFace = Math.abs(particle.position.z - 0) < 0.001;
+          const atBackFace = Math.abs(particle.position.z - 400) < 0.001;
           
-          const atEdge = atLeftEdge || atRightEdge || atTopEdge || atBottomEdge;
+          const atFace = atLeftFace || atRightFace || atBottomFace || atTopFace || atFrontFace || atBackFace;
           
-          expect(atEdge).toBe(true);
+          expect(atFace).toBe(true);
         }
       ),
       { numRuns: 100 }
@@ -58,7 +65,10 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           const massRange: [number, number] = minMass < maxMass ? [minMass, maxMass] : [maxMass, minMass];
           const energyRange: [number, number] = minEnergy < maxEnergy ? [minEnergy, maxEnergy] : [maxEnergy, minEnergy];
           
-          const bounds: Rectangle = { x: 0, y: 0, width: 800, height: 600 };
+          const bounds = new Boundary(
+            new Vector3D(0, 0, 0),
+            new Vector3D(800, 600, 400)
+          );
           const config: ParticleSpawnConfig = {
             spawnRate: 10,
             massRange,
@@ -92,7 +102,10 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           const massRange: [number, number] = minMass < maxMass ? [minMass, maxMass] : [maxMass, minMass];
           const energyRange: [number, number] = minEnergy < maxEnergy ? [minEnergy, maxEnergy] : [maxEnergy, minEnergy];
           
-          const bounds: Rectangle = { x: 0, y: 0, width: 800, height: 600 };
+          const bounds = new Boundary(
+            new Vector3D(0, 0, 0),
+            new Vector3D(800, 600, 400)
+          );
           const config: ParticleSpawnConfig = {
             spawnRate: 10,
             massRange,
@@ -128,7 +141,10 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           const massRange: [number, number] = minMass < maxMass ? [minMass, maxMass] : [maxMass, minMass];
           const energyRange: [number, number] = minEnergy < maxEnergy ? [minEnergy, maxEnergy] : [maxEnergy, minEnergy];
           
-          const bounds: Rectangle = { x: 0, y: 0, width: 800, height: 600 };
+          const bounds = new Boundary(
+            new Vector3D(0, 0, 0),
+            new Vector3D(800, 600, 400)
+          );
           const config: ParticleSpawnConfig = {
             spawnRate: 10,
             massRange,
@@ -138,27 +154,23 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           
           const manager = new ParticleManager(bounds, config);
           
-          // Spawn multiple particles and collect their angles
-          const angles: number[] = [];
+          // Spawn multiple particles and collect their velocity directions
+          const directions: string[] = [];
           for (let i = 0; i < 10; i++) {
             const particle = manager.spawnParticle();
             if (!particle) continue; // Skip if max particles reached
-            const angle = Math.atan2(particle.velocity.y, particle.velocity.x);
-            angles.push(angle);
+            // Create a simple hash of the velocity direction
+            const dirHash = `${Math.round(particle.velocity.x * 10)},${Math.round(particle.velocity.y * 10)},${Math.round(particle.velocity.z * 10)}`;
+            directions.push(dirHash);
           }
           
-          // Check that we have some variation in angles
-          // At least 2 different angles (with tolerance) in 10 spawns
-          const uniqueAngles = new Set<number>();
-          for (const angle of angles) {
-            // Round to 2 decimal places to account for floating point
-            const rounded = Math.round(angle * 100) / 100;
-            uniqueAngles.add(rounded);
-          }
+          // Check that we have some variation in directions
+          // At least 2 different directions (with tolerance) in 10 spawns
+          const uniqueDirections = new Set<string>(directions);
           
-          // With random angles, we should have at least 2 different angles in 10 spawns
+          // With random angles, we should have at least 2 different directions in 10 spawns
           // (probability of all same is extremely low)
-          expect(uniqueAngles.size).toBeGreaterThanOrEqual(2);
+          expect(uniqueDirections.size).toBeGreaterThanOrEqual(2);
         }
       ),
       { numRuns: 100 }
@@ -177,7 +189,10 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           const massRange: [number, number] = minMass < maxMass ? [minMass, maxMass] : [maxMass, minMass];
           const energyRange: [number, number] = minEnergy < maxEnergy ? [minEnergy, maxEnergy] : [maxEnergy, minEnergy];
           
-          const bounds: Rectangle = { x: 0, y: 0, width: 800, height: 600 };
+          const bounds = new Boundary(
+            new Vector3D(0, 0, 0),
+            new Vector3D(800, 600, 400)
+          );
           const config: ParticleSpawnConfig = {
             spawnRate: 10,
             massRange,
@@ -191,10 +206,12 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           if (!particle) return; // Skip if max particles reached
           
           // Position should be within or at the bounds
-          expect(particle.position.x).toBeGreaterThanOrEqual(bounds.x);
-          expect(particle.position.x).toBeLessThanOrEqual(bounds.x + bounds.width);
-          expect(particle.position.y).toBeGreaterThanOrEqual(bounds.y);
-          expect(particle.position.y).toBeLessThanOrEqual(bounds.y + bounds.height);
+          expect(particle.position.x).toBeGreaterThanOrEqual(0);
+          expect(particle.position.x).toBeLessThanOrEqual(800);
+          expect(particle.position.y).toBeGreaterThanOrEqual(0);
+          expect(particle.position.y).toBeLessThanOrEqual(600);
+          expect(particle.position.z).toBeGreaterThanOrEqual(0);
+          expect(particle.position.z).toBeLessThanOrEqual(400);
         }
       ),
       { numRuns: 100 }
@@ -213,7 +230,10 @@ describe('Property 1: Teilcheneintritt-Validierung', () => {
           const massRange: [number, number] = minMass < maxMass ? [minMass, maxMass] : [maxMass, minMass];
           const energyRange: [number, number] = minEnergy < maxEnergy ? [minEnergy, maxEnergy] : [maxEnergy, minEnergy];
           
-          const bounds: Rectangle = { x: 0, y: 0, width: 800, height: 600 };
+          const bounds = new Boundary(
+            new Vector3D(0, 0, 0),
+            new Vector3D(800, 600, 400)
+          );
           const config: ParticleSpawnConfig = {
             spawnRate: 10,
             massRange,

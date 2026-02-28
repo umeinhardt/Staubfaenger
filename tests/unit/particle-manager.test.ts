@@ -1,20 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ParticleManager, ParticleSpawnConfig, Rectangle } from '../../src/core/ParticleManager';
+import { ParticleManager, ParticleSpawnConfig } from '../../src/core/ParticleManager';
 import { Particle } from '../../src/core/Particle';
 import { Conglomerate } from '../../src/core/Conglomerate';
-import { Vector2D } from '../../src/core/Vector2D';
+import { Vector3D } from '../../src/core/Vector3D';
+import { Boundary } from '../../src/core/Boundary';
 
 describe('ParticleManager', () => {
-  let bounds: Rectangle;
+  let bounds: Boundary;
   let config: ParticleSpawnConfig;
   let manager: ParticleManager;
 
   beforeEach(() => {
-    bounds = { x: 0, y: 0, width: 800, height: 600 };
+    bounds = new Boundary(
+      new Vector3D(0, 0, 0),
+      new Vector3D(800, 600, 400)
+    );
     config = {
       spawnRate: 10, // 10 particles per second
       massRange: [1, 10],
-      energyRange: [100, 1000]
+      energyRange: [100, 1000],
+      maxParticles: 0
     };
     manager = new ParticleManager(bounds, config);
   });
@@ -26,13 +31,15 @@ describe('ParticleManager', () => {
       expect(particle).toBeDefined();
       expect(manager.particles).toContain(particle);
       
-      // Check if particle is at one of the edges
-      const atTopEdge = particle.position.y === bounds.y;
-      const atBottomEdge = particle.position.y === bounds.y + bounds.height;
-      const atLeftEdge = particle.position.x === bounds.x;
-      const atRightEdge = particle.position.x === bounds.x + bounds.width;
+      // Check if particle is at one of the 6 faces
+      const atLeftFace = Math.abs(particle.position.x - 0) < 0.001;
+      const atRightFace = Math.abs(particle.position.x - 800) < 0.001;
+      const atBottomFace = Math.abs(particle.position.y - 0) < 0.001;
+      const atTopFace = Math.abs(particle.position.y - 600) < 0.001;
+      const atFrontFace = Math.abs(particle.position.z - 0) < 0.001;
+      const atBackFace = Math.abs(particle.position.z - 400) < 0.001;
       
-      expect(atTopEdge || atBottomEdge || atLeftEdge || atRightEdge).toBe(true);
+      expect(atLeftFace || atRightFace || atBottomFace || atTopFace || atFrontFace || atBackFace).toBe(true);
     });
 
     it('should spawn particle with mass in configured range', () => {
@@ -74,7 +81,7 @@ describe('ParticleManager', () => {
     });
 
     it('should handle removing non-existent particle gracefully', () => {
-      const particle = new Particle(Vector2D.zero(), Vector2D.zero(), 1);
+      const particle = new Particle(Vector3D.zero(), Vector3D.zero(), 1);
       expect(() => manager.removeParticle(particle)).not.toThrow();
     });
   });
@@ -82,64 +89,68 @@ describe('ParticleManager', () => {
   describe('wrapParticle', () => {
     it('should wrap particle from left to right edge', () => {
       const particle = new Particle(
-        new Vector2D(-10, 300),
-        new Vector2D(1, 0),
+        new Vector3D(-10, 300, 200),
+        new Vector3D(1, 0, 0),
         5
       );
       manager.particles.push(particle);
       
       manager.wrapParticle(particle);
       
-      expect(particle.position.x).toBe(bounds.x + bounds.width);
-      expect(particle.position.y).toBe(300);
+      expect(particle.position.x).toBeCloseTo(800, 5);
+      expect(particle.position.y).toBeCloseTo(300, 5);
+      expect(particle.position.z).toBeCloseTo(200, 5);
     });
 
     it('should wrap particle from right to left edge', () => {
       const particle = new Particle(
-        new Vector2D(810, 300),
-        new Vector2D(1, 0),
+        new Vector3D(810, 300, 200),
+        new Vector3D(1, 0, 0),
         5
       );
       manager.particles.push(particle);
       
       manager.wrapParticle(particle);
       
-      expect(particle.position.x).toBe(bounds.x);
-      expect(particle.position.y).toBe(300);
+      expect(particle.position.x).toBeCloseTo(0, 5);
+      expect(particle.position.y).toBeCloseTo(300, 5);
+      expect(particle.position.z).toBeCloseTo(200, 5);
     });
 
     it('should wrap particle from top to bottom edge', () => {
       const particle = new Particle(
-        new Vector2D(400, -10),
-        new Vector2D(0, 1),
+        new Vector3D(400, -10, 200),
+        new Vector3D(0, 1, 0),
         5
       );
       manager.particles.push(particle);
       
       manager.wrapParticle(particle);
       
-      expect(particle.position.x).toBe(400);
-      expect(particle.position.y).toBe(bounds.y + bounds.height);
+      expect(particle.position.x).toBeCloseTo(400, 5);
+      expect(particle.position.y).toBeCloseTo(600, 5);
+      expect(particle.position.z).toBeCloseTo(200, 5);
     });
 
     it('should wrap particle from bottom to top edge', () => {
       const particle = new Particle(
-        new Vector2D(400, 610),
-        new Vector2D(0, 1),
+        new Vector3D(400, 610, 200),
+        new Vector3D(0, 1, 0),
         5
       );
       manager.particles.push(particle);
       
       manager.wrapParticle(particle);
       
-      expect(particle.position.x).toBe(400);
-      expect(particle.position.y).toBe(bounds.y);
+      expect(particle.position.x).toBeCloseTo(400, 5);
+      expect(particle.position.y).toBeCloseTo(0, 5);
+      expect(particle.position.z).toBeCloseTo(200, 5);
     });
 
     it('should preserve velocity after wrapping', () => {
-      const velocity = new Vector2D(10, 5);
+      const velocity = new Vector3D(10, 5, 3);
       const particle = new Particle(
-        new Vector2D(-10, 300),
+        new Vector3D(-10, 300, 200),
         velocity,
         5
       );
@@ -149,6 +160,7 @@ describe('ParticleManager', () => {
       
       expect(particle.velocity.x).toBe(velocity.x);
       expect(particle.velocity.y).toBe(velocity.y);
+      expect(particle.velocity.z).toBe(velocity.z);
     });
   });
 
@@ -240,17 +252,18 @@ describe('ParticleManager', () => {
 
     it('should update particle positions', () => {
       const particle = new Particle(
-        new Vector2D(100, 100),
-        new Vector2D(10, 5),
+        new Vector3D(100, 100, 100),
+        new Vector3D(10, 5, 3),
         5
       );
       manager.particles.push(particle);
       
-      const initialPos = new Vector2D(particle.position.x, particle.position.y);
+      const initialPos = new Vector3D(particle.position.x, particle.position.y, particle.position.z);
       manager.update(0.1);
       
       expect(particle.position.x).not.toBe(initialPos.x);
       expect(particle.position.y).not.toBe(initialPos.y);
+      expect(particle.position.z).not.toBe(initialPos.z);
     });
   });
 
