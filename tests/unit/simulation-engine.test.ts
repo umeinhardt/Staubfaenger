@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SimulationEngine, SimulationConfig } from '../../src/core/SimulationEngine';
 import { ParticleManager, ParticleSpawnConfig } from '../../src/core/ParticleManager';
 import { CollisionDetector } from '../../src/core/CollisionDetector';
@@ -8,6 +8,7 @@ import { NewtonianGravity } from '../../src/core/GravityFormula';
 import { Boundary } from '../../src/core/Boundary';
 import { Vector3D } from '../../src/core/Vector3D';
 import { JSDOM } from 'jsdom';
+import { createWebGLMock } from '../helpers/webgl-mock';
 
 describe('SimulationEngine', () => {
   let simulationEngine: SimulationEngine;
@@ -23,24 +24,19 @@ describe('SimulationEngine', () => {
     const dom = new JSDOM('<!DOCTYPE html><canvas id="testCanvas"></canvas>');
     global.document = dom.window.document as any;
     global.HTMLCanvasElement = dom.window.HTMLCanvasElement as any;
+    global.WebGLRenderingContext = {} as any;
     
-    // Mock canvas context
-    const mockContext = {
-      fillStyle: '',
-      strokeStyle: '',
-      lineWidth: 0,
-      fillRect: () => {},
-      beginPath: () => {},
-      arc: () => {},
-      fill: () => {},
-      stroke: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-    };
+    // Create comprehensive WebGL mock
+    const webglMock = createWebGLMock();
     
-    HTMLCanvasElement.prototype.getContext = function() {
-      return mockContext as any;
-    };
+    // Mock canvas.getContext to return our WebGL mock
+    HTMLCanvasElement.prototype.getContext = function(contextType: string) {
+      if (contextType === 'webgl' || contextType === 'webgl2' || contextType === 'experimental-webgl') {
+        webglMock.canvas = this;
+        return webglMock;
+      }
+      return null;
+    } as any;
     
     canvas = dom.window.document.getElementById('testCanvas') as any;
     canvas.width = 800;
@@ -79,6 +75,9 @@ describe('SimulationEngine', () => {
     collisionDetector = new CollisionDetector(50);
     physicsEngine = new PhysicsEngine(new NewtonianGravity(1.0), 0);
     renderer = new Renderer(canvas, renderConfig);
+    
+    // Create camera controller
+    const camera = renderer.getCamera();
 
     // Create simulation engine
     simulationEngine = new SimulationEngine(
@@ -86,8 +85,8 @@ describe('SimulationEngine', () => {
       collisionDetector,
       physicsEngine,
       renderer,
-      config,
-      'cpu' // Default physics engine type
+      camera,
+      config
     );
   });
 
