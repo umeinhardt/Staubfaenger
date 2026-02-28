@@ -156,11 +156,59 @@ async function initializeSimulation(): Promise<void> {
   // Start the simulation automatically
   simulationEngine.start();
   console.log('3D Simulation started!');
+  
+  // Store engine globally for benchmark access
+  (window as any).simulationEngine = simulationEngine;
 }
+
+// Expose benchmark functions globally for console access
+import { runQuickBenchmark, runFullBenchmark, downloadBenchmarkJSON, downloadBenchmarkCSV } from './benchmark';
+
+// Expose benchmark functions
+(window as any).runQuickBenchmark = async () => {
+  const engine = (window as any).simulationEngine;
+  if (!engine) {
+    console.error('Simulation not initialized yet. Please wait for initialization to complete.');
+    return;
+  }
+  await runQuickBenchmark(engine);
+};
+
+(window as any).runFullBenchmark = async () => {
+  const engine = (window as any).simulationEngine;
+  if (!engine) {
+    console.error('Simulation not initialized yet. Please wait for initialization to complete.');
+    return;
+  }
+  await runFullBenchmark(engine);
+};
+
+(window as any).downloadBenchmarkJSON = downloadBenchmarkJSON;
+(window as any).downloadBenchmarkCSV = downloadBenchmarkCSV;
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeSimulation);
+  document.addEventListener('DOMContentLoaded', () => {
+    initializeSimulation().then(() => {
+      console.log('');
+      console.log('=== Benchmark Functions Available ===');
+      console.log('Run from browser console:');
+      console.log('  runQuickBenchmark() - Quick test (~2 min)');
+      console.log('  runFullBenchmark() - Full test (~10 min)');
+      console.log('  downloadBenchmarkJSON() - Download results as JSON');
+      console.log('  downloadBenchmarkCSV() - Download results as CSV');
+      console.log('');
+    });
+  });
 } else {
-  initializeSimulation();
+  initializeSimulation().then(() => {
+    console.log('');
+    console.log('=== Benchmark Functions Available ===');
+    console.log('Run from browser console:');
+    console.log('  runQuickBenchmark() - Quick test (~2 min)');
+    console.log('  runFullBenchmark() - Full test (~10 min)');
+    console.log('  downloadBenchmarkJSON() - Download results as JSON');
+    console.log('  downloadBenchmarkCSV() - Download results as CSV');
+    console.log('');
+  });
 }

@@ -9,22 +9,43 @@ import * as THREE from 'three';
 // Mock WebGL context
 const createMockWebGLContext = () => {
   const gl: any = {
+    VERSION: 7938,
     VERTEX_SHADER: 35633,
     FRAGMENT_SHADER: 35632,
     HIGH_FLOAT: 36338,
     MEDIUM_FLOAT: 36337,
     LOW_FLOAT: 36336,
     getExtension: vi.fn(() => ({})),
-    getParameter: vi.fn(() => 16),
+    getContextAttributes: vi.fn(() => ({
+      alpha: true,
+      depth: true,
+      stencil: true,
+      antialias: true,
+      premultipliedAlpha: true,
+      preserveDrawingBuffer: false,
+      powerPreference: 'default',
+      failIfMajorPerformanceCaveat: false
+    })),
+    getParameter: vi.fn((param: number) => {
+      if (param === 7938) return 'WebGL 2.0'; // VERSION
+      if (param === 7937) return 'WebGL GLSL ES 3.00'; // SHADING_LANGUAGE_VERSION
+      if (param === 35724) return 16384; // MAX_VERTEX_ATTRIBS
+      if (param === 3379) return 16384; // MAX_TEXTURE_SIZE
+      return 16;
+    }),
     getShaderPrecisionFormat: vi.fn(() => ({ precision: 23, rangeMin: 127, rangeMax: 127 })),
     createShader: vi.fn(() => ({})),
     shaderSource: vi.fn(),
     compileShader: vi.fn(),
     getShaderParameter: vi.fn(() => true),
+    getShaderInfoLog: vi.fn(() => ''),
     createProgram: vi.fn(() => ({})),
     attachShader: vi.fn(),
     linkProgram: vi.fn(),
     getProgramParameter: vi.fn(() => true),
+    getProgramInfoLog: vi.fn(() => ''),
+    getActiveUniform: vi.fn(() => ({ name: 'test', size: 1, type: 35676 })),
+    getActiveAttrib: vi.fn(() => ({ name: 'test', size: 1, type: 35665 })),
     useProgram: vi.fn(),
     createBuffer: vi.fn(() => ({})),
     bindBuffer: vi.fn(),
@@ -41,13 +62,25 @@ const createMockWebGLContext = () => {
     createTexture: vi.fn(() => ({})),
     bindTexture: vi.fn(),
     texImage2D: vi.fn(),
+    texImage3D: vi.fn(),
     texParameteri: vi.fn(),
     clear: vi.fn(),
     clearColor: vi.fn(),
+    clearDepth: vi.fn(),
+    clearStencil: vi.fn(),
+    colorMask: vi.fn(),
+    depthMask: vi.fn(),
+    stencilMask: vi.fn(),
     enable: vi.fn(),
     disable: vi.fn(),
     depthFunc: vi.fn(),
     blendFunc: vi.fn(),
+    blendEquation: vi.fn(),
+    cullFace: vi.fn(),
+    frontFace: vi.fn(),
+    lineWidth: vi.fn(),
+    polygonOffset: vi.fn(),
+    scissor: vi.fn(),
     viewport: vi.fn(),
     drawArrays: vi.fn(),
     drawElements: vi.fn(),
@@ -65,6 +98,9 @@ const createMockWebGLContext = () => {
     deleteTexture: vi.fn(),
     deleteFramebuffer: vi.fn(),
     deleteRenderbuffer: vi.fn(),
+    createVertexArray: vi.fn(() => ({})),
+    bindVertexArray: vi.fn(),
+    deleteVertexArray: vi.fn(),
     canvas: { width: 800, height: 600 },
     drawingBufferWidth: 800,
     drawingBufferHeight: 600,
@@ -86,7 +122,24 @@ class MockHTMLCanvasElement {
   
   addEventListener = vi.fn();
   removeEventListener = vi.fn();
+  dispatchEvent = vi.fn();
+  getRootNode = vi.fn(() => this);
+  getBoundingClientRect = vi.fn(() => ({
+    left: 0,
+    top: 0,
+    width: 800,
+    height: 600,
+    right: 800,
+    bottom: 600,
+    x: 0,
+    y: 0,
+    toJSON: () => ({})
+  }));
   style = {};
+  ownerDocument = {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn()
+  };
 }
 
 describe('Renderer (3D)', () => {

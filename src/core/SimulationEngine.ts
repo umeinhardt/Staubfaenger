@@ -4,6 +4,10 @@ import { PhysicsEngine } from './PhysicsEngine';
 import { Renderer } from './Renderer';
 import { Camera } from './Camera';
 import { Boundary } from './Boundary';
+import { OptimizedWebGPUPhysicsEngine } from './OptimizedWebGPUPhysicsEngine';
+import { ParallelPhysicsEngine } from './ParallelPhysicsEngine';
+import { GravityFormula } from './GravityFormula';
+import { PreferenceManager, PerformancePreferences } from './PreferenceManager';
 
 /**
  * Configuration for the simulation engine
@@ -14,6 +18,25 @@ export interface SimulationConfig {
   accuracySteps: number;    // Number of physics sub-steps per frame
   adaptiveTimeSteps: boolean; // Enable adaptive time steps for constant FPS
 }
+
+/**
+ * Configuration for physics engine selection
+ */
+export interface PhysicsEngineConfig {
+  preferGPU: boolean;           // User preference for GPU acceleration
+  gpuThreshold: number;         // Minimum particles for GPU (default: 200)
+  forceMode?: 'gpu' | 'workers' | 'cpu';  // Force specific mode (for testing)
+}
+
+/**
+ * Configuration for physics engine selection
+ */
+export interface PhysicsEngineConfig {
+  preferGPU: boolean;           // User preference for GPU acceleration
+  gpuThreshold: number;         // Minimum particles for GPU (default: 200)
+  forceMode?: 'gpu' | 'workers' | 'cpu';  // Force specific mode (for testing)
+}
+
 
 /**
  * Main simulation engine that coordinates the game loop
@@ -28,6 +51,9 @@ export class SimulationEngine {
   private renderer: Renderer;
   private cameraController: Camera;
   private config: SimulationConfig;
+  private physicsConfig: PhysicsEngineConfig;
+  private currentPhysicsMode: 'gpu' | 'workers' | 'cpu';
+  private preferenceManager: PreferenceManager;
 
   private isRunning: boolean = false;
   private lastFrameTime: number = 0;
@@ -38,6 +64,10 @@ export class SimulationEngine {
   private frameTimeHistory: number[] = []; // Last N frame times for averaging
   private readonly frameHistorySize: number = 10; // Number of frames to average
   private currentAdaptiveScale: number = 1.0; // Current adaptive time scale
+  
+  // FPS tracking
+  private fpsHistory: number[] = [];
+  private readonly fpsHistorySize: number = 60; // Track last 60 frames
 
   /**
    * Create a new simulation engine
@@ -62,6 +92,181 @@ export class SimulationEngine {
     this.renderer = renderer;
     this.cameraController = cameraController;
     this.config = config;
+    
+    // Initialize preference manager
+    this.preferenceManager = new PreferenceManager();
+    
+    // Initialize physics config with defaults
+    this.physicsConfig = {
+      preferGPU: true,
+      gpuThreshold: 200
+    };
+    
+    // Load saved preferences if available
+    this.loadPreferences();
+    
+    // Determine initial physics mode
+    if (physicsEngine instanceof OptimizedWebGPUPhysicsEngine) {
+      this.currentPhysicsMode = 'gpu';
+    } else if (physicsEngine instanceof ParallelPhysicsEngine) {
+      this.currentPhysicsMode = 'workers';
+    } else {
+      this.currentPhysicsMode = 'cpu';
+    }
+  }
+
+  /**
+   * Load preferences from storage
+   * Validates: Requirement 7.6
+   */
+  private loadPreferences(): void {
+    const prefs = this.preferenceManager.loadPreferences();
+    if (prefs) {
+      this.physicsConfig.preferGPU = prefs.preferGPU;
+      this.physicsConfig.gpuThreshold = prefs.gpuThreshold;
+      
+      // Apply rendering preference
+      if (this.renderer) {
+        this.renderer.setInstancedRendering(prefs.useInstancedRendering);
+      }
+    }
+  }
+
+  /**
+   * Save current preferences to storage
+   * Validates: Requirement 7.6
+   */
+  private savePreferences(): void {
+    const prefs: PerformancePreferences = {
+      preferGPU: this.physicsConfig.preferGPU,
+      gpuThreshold: this.physicsConfig.gpuThreshold,
+      useInstancedRendering: this.renderer.isUsingInstancedRendering(),
+      lastUpdated: new Date()
+    };
+    this.preferenceManager.savePreferences(prefs);
+  }
+
+  /**
+   * Initialize physics engine with WebGPU detection and fallback
+   * Validates: Requirements 1.1, 1.2, 1.3, 6.1, 6.2
+   * @param gravityFormula - Gravity formula to use
+   * @param config - Physics engine configuration
+   */
+  async initializePhysicsEngine(
+    gravityFormula: GravityFormula,
+    config: PhysicsEngineConfig
+  ): Promise<void> {
+    this.physicsConfig = config;
+    
+    // Step 1: Check if GPU is forced off
+    if (config.forceMode === 'cpu' || config.forceMode === 'workers') {
+      this.initializeFallbackEngine(gravityFormula, config.forceMode);
+      return;
+    }
+    
+    // Step 2: Try WebGPU initialization
+    if (config.preferGPU && typeof navigator !== 'undefined' && navigator.gpu) {
+      try {
+        const engine = new OptimizedWebGPUPhysicsEngine(
+          gravityFormula,
+          this.physicsEngine.getElasticity(),
+          false // separateOnCollision
+        );
+        
+        await engine.initialize();
+        
+        if (engine.isUsingGPU()) {
+          this.physicsEngine = engine;
+          this.currentPhysicsMode = 'gpu';
+          console.log('WebGPU Physics: Enabled');
+          return;
+        }
+        
+        // GPU initialization failed, log and fall through
+        console.warn('WebGPU initialization failed: GPU not available');
+      } catch (error) {
+        console.error('WebGPU initialization error:', error);
+      }
+    }
+    
+    // Step 3: Fall back to Workers or CPU
+    this.initializeFallbackEngine(gravityFormula, 'workers');
+  }
+
+  /**
+   * Initialize fallback physics engine (Workers or CPU)
+   * @param gravityFormula - Gravity formula to use
+   * @param preferredMode - Preferred fallback mode
+   */
+  private initializeFallbackEngine(
+    gravityFormula: GravityFormula,
+    preferredMode: 'workers' | 'cpu'
+  ): void {
+    const elasticity = this.physicsEngine.getElasticity();
+    
+    if (preferredMode === 'workers' && typeof Worker !== 'undefined') {
+      this.physicsEngine = new ParallelPhysicsEngine(
+        gravityFormula,
+        elasticity,
+        false // separateOnCollision
+      );
+      this.currentPhysicsMode = 'workers';
+      console.log('Physics: Using Web Workers');
+    } else {
+      this.physicsEngine = new PhysicsEngine(
+        gravityFormula,
+        elasticity,
+        false // separateOnCollision
+      );
+      this.currentPhysicsMode = 'cpu';
+      console.log('Physics: Using CPU only');
+    }
+  }
+
+  /**
+   * Switch physics engine at runtime while preserving simulation state
+   * Validates: Requirements 1.5, 7.4
+   * @param mode - Target physics mode
+   */
+  async switchPhysicsEngine(mode: 'gpu' | 'workers' | 'cpu'): Promise<void> {
+    // Don't switch if already in target mode
+    if (this.currentPhysicsMode === mode) {
+      return;
+    }
+    
+    // Pause simulation
+    const wasRunning = this.isRunning;
+    if (wasRunning) {
+      this.pause();
+    }
+    
+    // Store current configuration
+    const gravityFormula = this.physicsEngine.getGravityFormula();
+    const elasticity = this.physicsEngine.getElasticity();
+    
+    // Dispose old engine if it has dispose method
+    if ('dispose' in this.physicsEngine && typeof (this.physicsEngine as any).dispose === 'function') {
+      (this.physicsEngine as any).dispose();
+    }
+    
+    // Create new engine based on mode
+    const config: PhysicsEngineConfig = {
+      preferGPU: mode === 'gpu',
+      gpuThreshold: this.physicsConfig.gpuThreshold,
+      forceMode: mode
+    };
+    
+    await this.initializePhysicsEngine(gravityFormula, config);
+    
+    // Restore configuration
+    this.physicsEngine.setElasticity(elasticity);
+    
+    // Resume if was running
+    if (wasRunning) {
+      this.start();
+    }
+    
+    console.log(`Switched to ${this.currentPhysicsMode} physics`);
   }
 
   /**
@@ -136,6 +341,9 @@ export class SimulationEngine {
     // Calculate delta time in seconds
     const deltaTime = (currentTime - this.lastFrameTime) / 1000;
     this.lastFrameTime = currentTime;
+
+    // Update FPS tracking
+    this.updateFPS(deltaTime);
 
     // Cap delta time to prevent spiral of death
     // If frame takes too long, limit it to avoid instability
@@ -424,10 +632,122 @@ export class SimulationEngine {
   }
 
   /**
+   * Update FPS tracking
+   * Validates: Requirement 4.5
+   * @param deltaTime - Time elapsed since last frame
+   */
+  private updateFPS(deltaTime: number): void {
+    const fps = deltaTime > 0 ? 1 / deltaTime : 0;
+    this.fpsHistory.push(fps);
+    
+    if (this.fpsHistory.length > this.fpsHistorySize) {
+      this.fpsHistory.shift();
+    }
+    
+    // Check performance warning every 30 frames
+    if (this.fpsHistory.length >= 30 && this.fpsHistory.length % 30 === 0) {
+      this.checkPerformanceWarning();
+    }
+  }
+
+  /**
+   * Check if performance warning should be displayed
+   * Validates: Requirement 4.4
+   */
+  private checkPerformanceWarning(): void {
+    const avgFPS = this.getAverageFPS(30);
+    const particleCount = this.particleManager.getAllEntities().length;
+    
+    if (avgFPS < 30 && particleCount > 100) {
+      console.warn(
+        `Performance warning: ${avgFPS.toFixed(1)} FPS with ${particleCount} particles. ` +
+        `Consider reducing particle count or enabling GPU acceleration.`
+      );
+    }
+  }
+
+  /**
+   * Get current FPS
+   * Validates: Requirement 4.5
+   * @returns Current FPS
+   */
+  getCurrentFPS(): number {
+    if (this.fpsHistory.length === 0) return 0;
+    return this.fpsHistory[this.fpsHistory.length - 1];
+  }
+
+  /**
+   * Get average FPS over last N frames
+   * Validates: Requirement 4.5
+   * @param frames - Number of frames to average (default: 60)
+   * @returns Average FPS
+   */
+  getAverageFPS(frames: number = 60): number {
+    if (this.fpsHistory.length === 0) return 0;
+    
+    const count = Math.min(frames, this.fpsHistory.length);
+    const recent = this.fpsHistory.slice(-count);
+    return recent.reduce((sum, fps) => sum + fps, 0) / count;
+  }
+
+  /**
    * Get the collision detector
    * @returns Collision detector instance
    */
   getCollisionDetector(): CollisionDetector {
     return this.collisionDetector;
+  }
+
+  /**
+   * Get the current physics mode
+   * Validates: Requirement 6.3
+   * @returns Current physics mode
+   */
+  getPhysicsMode(): 'gpu' | 'workers' | 'cpu' {
+    return this.currentPhysicsMode;
+  }
+
+  /**
+   * Set GPU threshold for physics engine selection
+   * Validates: Requirement 7.2
+   * @param threshold - Minimum particle count for GPU usage
+   */
+  setGPUThreshold(threshold: number): void {
+    if (threshold < 0) {
+      throw new Error('GPU threshold must be non-negative');
+    }
+    this.physicsConfig.gpuThreshold = threshold;
+    
+    // Update engine if it's OptimizedWebGPUPhysicsEngine
+    if (this.physicsEngine instanceof OptimizedWebGPUPhysicsEngine) {
+      this.physicsEngine.setGPUThreshold(threshold);
+    }
+    
+    // Save preferences
+    this.savePreferences();
+  }
+
+  /**
+   * Set GPU preference
+   * Validates: Requirement 7.1
+   * @param prefer - True to prefer GPU acceleration
+   */
+  setPreferGPU(prefer: boolean): void {
+    this.physicsConfig.preferGPU = prefer;
+    
+    // Save preferences
+    this.savePreferences();
+  }
+
+  /**
+   * Set instanced rendering mode
+   * Validates: Requirement 3.8, 7.6
+   * @param enabled - True to enable instanced rendering
+   */
+  setInstancedRendering(enabled: boolean): void {
+    this.renderer.setInstancedRendering(enabled);
+    
+    // Save preferences
+    this.savePreferences();
   }
 }

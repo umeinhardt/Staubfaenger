@@ -86,7 +86,7 @@ export class Camera {
 
     // Set distance limits - allow zooming out much further
     this.controls.minDistance = 10;
-    this.controls.maxDistance = 2000; // Increased from 200 to 2000
+    this.controls.maxDistance = 200;
 
     // Allow full rotation (no polar angle limits)
     this.controls.maxPolarAngle = Math.PI;

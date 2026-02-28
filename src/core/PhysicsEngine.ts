@@ -64,6 +64,13 @@ export class PhysicsEngine {
   }
 
   /**
+   * Get the gravity formula
+   */
+  getGravityFormula(): GravityFormula {
+    return this.gravityFormula;
+  }
+
+  /**
    * Set whether to use GPU acceleration (overridden by GPUPhysicsEngine)
    * @param use - Whether to use GPU
    */

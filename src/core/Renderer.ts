@@ -19,6 +19,15 @@ export interface RenderConfig {
 }
 
 /**
+ * Configuration for instanced rendering
+ */
+export interface InstancedRenderingConfig {
+  enabled: boolean;              // Enable instanced rendering
+  maxInstances: number;          // Maximum instances per mesh (default: 10000)
+  updateBatchSize: number;       // Batch size for matrix updates (default: 100)
+}
+
+/**
  * Renderer class for 3D visualization using Three.js
  * Provides hardware-accelerated WebGL rendering of particles and conglomerates
  */
@@ -34,6 +43,13 @@ export class Renderer {
   private directionalLight!: THREE.DirectionalLight;
   private fillLight!: THREE.DirectionalLight;
   private brightness: number = 1.5; // Default brightness multiplier
+
+  // Instanced rendering
+  private instancedRenderingConfig: InstancedRenderingConfig;
+  private particleInstancedMesh: THREE.InstancedMesh | null = null;
+  private conglomerateInstancedMeshes: Map<string, THREE.InstancedMesh> = new Map();
+  private instanceMatrices: Float32Array | null = null;
+  private instanceColors: Float32Array | null = null;
 
   // Color ranges for different modes (now used for rank-based distribution)
   private massColorRange = { min: 0, max: 1 };
@@ -60,6 +76,13 @@ export class Renderer {
     this.config = config;
     this.particleMeshes = new Map();
     this.velocityArrows = new Map();
+
+    // Initialize instanced rendering config with defaults (disabled by default)
+    this.instancedRenderingConfig = {
+      enabled: false,
+      maxInstances: 10000,
+      updateBatchSize: 100
+    };
 
     // Initialize Three.js scene
     this.scene = new THREE.Scene();
@@ -111,6 +134,40 @@ export class Renderer {
     this.fillLight = new THREE.DirectionalLight(0xffffff, 0.3 * this.brightness);
     this.fillLight.position.set(-10, -10, -10);
     this.scene.add(this.fillLight);
+  }
+
+  /**
+   * Initialize instanced rendering
+   * Validates: Requirements 3.1, 3.4
+   * @param config - Instanced rendering configuration
+   */
+  initializeInstancedRendering(config: InstancedRenderingConfig): void {
+    this.instancedRenderingConfig = config;
+    
+    if (!config.enabled) {
+      return;
+    }
+    
+    // Create instanced mesh for particles
+    const geometry = new THREE.SphereGeometry(1, 16, 16); // Unit sphere
+    const material = new THREE.MeshPhongMaterial({
+      shininess: 100,
+      specular: 0x444444
+    });
+    
+    this.particleInstancedMesh = new THREE.InstancedMesh(
+      geometry,
+      material,
+      config.maxInstances
+    );
+    
+    // Allocate instance attribute arrays
+    this.instanceMatrices = new Float32Array(config.maxInstances * 16);
+    this.instanceColors = new Float32Array(config.maxInstances * 3);
+    
+    this.scene.add(this.particleInstancedMesh);
+    
+    console.log(`Instanced rendering initialized: ${config.maxInstances} max instances`);
   }
 
   /**
@@ -221,26 +278,47 @@ export class Renderer {
     // Track which entities are still active
     const activeIds = new Set<string>();
 
-    for (const entity of entities) {
-      if (entity instanceof Particle) {
-        this.updateParticle(entity);
+    // Use instanced rendering if enabled
+    if (this.instancedRenderingConfig.enabled && this.particleInstancedMesh) {
+      this.updateInstancedMeshes(entities);
+      
+      // Mark all entities as active
+      for (const entity of entities) {
         activeIds.add(entity.id);
+        if (entity instanceof Conglomerate) {
+          for (const particle of entity.particles) {
+            activeIds.add(particle.id);
+          }
+        }
         
-        // Update velocity vector if enabled
+        // Update velocity vectors if enabled
         if (this.config.showVelocityVectors) {
           this.updateVelocityArrow(entity);
         }
-      } else if (entity instanceof Conglomerate) {
-        this.updateConglomerate(entity);
-        activeIds.add(entity.id);
-        // Also mark constituent particles as active
-        for (const particle of entity.particles) {
-          activeIds.add(particle.id);
-        }
-        
-        // Update velocity vector for conglomerate if enabled
-        if (this.config.showVelocityVectors) {
-          this.updateVelocityArrow(entity);
+      }
+    } else {
+      // Use individual mesh rendering
+      for (const entity of entities) {
+        if (entity instanceof Particle) {
+          this.updateParticle(entity);
+          activeIds.add(entity.id);
+          
+          // Update velocity vector if enabled
+          if (this.config.showVelocityVectors) {
+            this.updateVelocityArrow(entity);
+          }
+        } else if (entity instanceof Conglomerate) {
+          this.updateConglomerate(entity);
+          activeIds.add(entity.id);
+          // Also mark constituent particles as active
+          for (const particle of entity.particles) {
+            activeIds.add(particle.id);
+          }
+          
+          // Update velocity vector for conglomerate if enabled
+          if (this.config.showVelocityVectors) {
+            this.updateVelocityArrow(entity);
+          }
         }
       }
     }
@@ -410,6 +488,88 @@ export class Renderer {
   }
 
   /**
+   * Update instanced meshes for all entities
+   * Validates: Requirements 3.2, 3.3, 3.4
+   * @param entities - Array of particles and conglomerates to render
+   */
+  private updateInstancedMeshes(entities: (Particle | Conglomerate)[]): void {
+    if (!this.particleInstancedMesh) {
+      return;
+    }
+
+    const particles = entities.filter(e => e instanceof Particle) as Particle[];
+    const conglomerates = entities.filter(e => !(e instanceof Particle)) as Conglomerate[];
+    
+    // Check if we need to resize
+    if (particles.length > this.instancedRenderingConfig.maxInstances) {
+      this.resizeInstancedMesh(Math.ceil(particles.length * 1.2));
+    }
+    
+    // Update instance matrices and colors in batch
+    const matrix = new THREE.Matrix4();
+    
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
+      
+      // Set position and scale
+      matrix.makeScale(particle.radius, particle.radius, particle.radius);
+      matrix.setPosition(particle.position.x, particle.position.y, particle.position.z);
+      
+      // Update instance matrix
+      this.particleInstancedMesh.setMatrixAt(i, matrix);
+      
+      // Update instance color
+      const particleColor = this.getColor(particle);
+      this.particleInstancedMesh.setColorAt(i, particleColor);
+    }
+    
+    // Mark for update
+    this.particleInstancedMesh.instanceMatrix.needsUpdate = true;
+    if (this.particleInstancedMesh.instanceColor) {
+      this.particleInstancedMesh.instanceColor.needsUpdate = true;
+    }
+    
+    // Set visible instance count
+    this.particleInstancedMesh.count = particles.length;
+    
+    // Render conglomerates separately (they have complex structure)
+    for (const conglomerate of conglomerates) {
+      this.updateConglomerate(conglomerate);
+    }
+  }
+
+  /**
+   * Resize instanced mesh to accommodate more particles
+   * Validates: Requirement 3.5
+   * @param newCapacity - New capacity for instanced mesh
+   */
+  private resizeInstancedMesh(newCapacity: number): void {
+    if (!this.particleInstancedMesh) return;
+    
+    console.log(`Resizing instanced mesh: ${this.instancedRenderingConfig.maxInstances} -> ${newCapacity}`);
+    
+    // Remove old mesh
+    this.scene.remove(this.particleInstancedMesh);
+    this.particleInstancedMesh.dispose();
+    
+    // Create new mesh with larger capacity
+    const geometry = new THREE.SphereGeometry(1, 16, 16);
+    const material = new THREE.MeshPhongMaterial({
+      shininess: 100,
+      specular: 0x444444
+    });
+    
+    this.particleInstancedMesh = new THREE.InstancedMesh(
+      geometry,
+      material,
+      newCapacity
+    );
+    
+    this.scene.add(this.particleInstancedMesh);
+    this.instancedRenderingConfig.maxInstances = newCapacity;
+  }
+
+  /**
    * Get the color for an entity based on the current color mode
    * Uses rank-based distribution for all modes to ensure full spectrum usage
    * @param entity - Particle or Conglomerate
@@ -567,6 +727,54 @@ export class Renderer {
   }
 
   /**
+   * Set whether to use instanced rendering
+   * Validates: Requirement 3.8
+   * @param enabled - True to enable instanced rendering
+   */
+  setInstancedRendering(enabled: boolean): void {
+    this.instancedRenderingConfig.enabled = enabled;
+    
+    if (enabled && !this.particleInstancedMesh) {
+      // Initialize instanced rendering if not already done
+      this.initializeInstancedRendering(this.instancedRenderingConfig);
+    }
+  }
+
+  /**
+   * Check if using instanced rendering
+   * Validates: Requirement 3.8
+   * @returns True if instanced rendering is enabled
+   */
+  isUsingInstancedRendering(): boolean {
+    return this.instancedRenderingConfig.enabled && this.particleInstancedMesh !== null;
+  }
+
+  /**
+   * Get rendering statistics
+   * Validates: Requirement 3.8
+   * @returns Rendering statistics
+   */
+  getRenderingStats(): {
+    mode: 'instanced' | 'individual';
+    drawCalls: number;
+    instanceCount: number;
+  } {
+    if (this.isUsingInstancedRendering()) {
+      return {
+        mode: 'instanced',
+        drawCalls: 1, // Single draw call for all particles
+        instanceCount: this.particleInstancedMesh?.count || 0
+      };
+    } else {
+      return {
+        mode: 'individual',
+        drawCalls: this.particleMeshes.size,
+        instanceCount: 0
+      };
+    }
+  }
+
+  /**
    * Clean up resources
    */
   dispose(): void {
@@ -577,6 +785,19 @@ export class Renderer {
       (mesh.material as THREE.Material).dispose();
     }
     this.particleMeshes.clear();
+
+    // Dispose instanced meshes
+    if (this.particleInstancedMesh) {
+      this.scene.remove(this.particleInstancedMesh);
+      this.particleInstancedMesh.dispose();
+      this.particleInstancedMesh = null;
+    }
+    
+    for (const [, mesh] of Array.from(this.conglomerateInstancedMeshes)) {
+      this.scene.remove(mesh);
+      mesh.dispose();
+    }
+    this.conglomerateInstancedMeshes.clear();
 
     // Dispose all velocity arrows
     for (const [, arrow] of Array.from(this.velocityArrows)) {

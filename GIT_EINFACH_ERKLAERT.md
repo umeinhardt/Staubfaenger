@@ -97,6 +97,51 @@ Das war's! Die Website ist jetzt live.
 
 ---
 
+## Neue Version veröffentlichen (Release erstellen)
+
+Wenn du eine neue Version deines Programms veröffentlichen willst (z.B. v1.0.1), machst du das so:
+
+### Schritt 1: Version in package.json ändern
+
+Öffne `package.json` und ändere die Versionsnummer:
+
+```json
+{
+  "version": "1.0.1",
+  ...
+}
+```
+
+### Schritt 2: Änderungen hochladen
+
+```bash
+git add package.json
+git commit -m "Version 1.0.1"
+git push origin main
+```
+
+### Schritt 3: Release-Tag erstellen
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+**Das war's!** GitHub baut jetzt automatisch:
+- Windows Installer (.exe) und Portable (.zip)
+- macOS Installer (.dmg) und Portable (.zip)
+- Linux Installer (.AppImage und .deb)
+
+Du findest die fertigen Downloads nach ein paar Minuten hier:
+👉 https://github.com/umeinhardt/Staubfaenger/releases
+
+### Den Build-Fortschritt ansehen
+
+Während GitHub die Installer baut, kannst du hier zusehen:
+👉 https://github.com/umeinhardt/Staubfaenger/actions
+
+---
+
 ## Häufige Fragen
 
 ### "Ich sehe nur index.html auf GitHub"
@@ -110,6 +155,13 @@ Das war's! Die Website ist jetzt live.
 
 ### "Ich habe einen Fehler gemacht!"
 → Keine Panik! Git kann alles rückgängig machen. Frag mich einfach.
+
+### "Wie lösche ich einen falschen Tag?"
+→ Wenn du einen Tag versehentlich erstellt hast:
+```bash
+git tag -d v1.0.1
+git push origin :refs/tags/v1.0.1
+```
 
 ---
 
@@ -130,9 +182,15 @@ git status
 # Website deployen
 npm run deploy
 
-# Release erstellen
-git tag v1.0.0
-git push origin v1.0.0
+# Neue Version veröffentlichen (Release)
+# 1. Version in package.json ändern (z.B. auf "1.0.1")
+# 2. Dann:
+git add package.json
+git commit -m "Version 1.0.1"
+git push origin main
+git tag v1.0.1
+git push origin v1.0.1
+# GitHub baut jetzt automatisch alle Installer!
 ```
 
 ---

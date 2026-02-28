@@ -6,7 +6,7 @@ import { Vector3D } from '../../src/core/Vector3D';
 
 describe('3D CollisionDetector Edge Cases', () => {
   describe('Sphere-sphere collision detection in 3D', () => {
-    it('should detect collision between two overlapping spheres', () => {
+    it('should detect collision between two overlapping spheres', async () => {
       const particle1 = new Particle(
         new Vector3D(0, 0, 0),
         Vector3D.zero(),
@@ -19,14 +19,14 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(particle1.radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(1);
       expect(collisions[0].entity1.id).toBe(particle1.id);
       expect(collisions[0].entity2.id).toBe(particle2.id);
     });
 
-    it('should detect collision in 3D space (z-axis)', () => {
+    it('should detect collision in 3D space (z-axis)', async () => {
       const particle1 = new Particle(
         new Vector3D(0, 0, 0),
         Vector3D.zero(),
@@ -39,12 +39,12 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(particle1.radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(1);
     });
 
-    it('should detect collision in diagonal 3D direction', () => {
+    it('should detect collision in diagonal 3D direction', async () => {
       const particle1 = new Particle(
         new Vector3D(0, 0, 0),
         Vector3D.zero(),
@@ -57,14 +57,14 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(particle1.radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(1);
     });
   });
 
   describe('Non-colliding spheres', () => {
-    it('should not detect collision when spheres are far apart', () => {
+    it('should not detect collision when spheres are far apart', async () => {
       const particle1 = new Particle(
         new Vector3D(0, 0, 0),
         Vector3D.zero(),
@@ -77,12 +77,12 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(particle1.radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(0);
     });
 
-    it('should not detect collision when spheres are just barely not touching', () => {
+    it('should not detect collision when spheres are just barely not touching', async () => {
       const mass = 10;
       const radius = Math.sqrt(mass);
       const particle1 = new Particle(
@@ -97,14 +97,14 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(0);
     });
   });
 
   describe('Edge cases - touching spheres', () => {
-    it('should detect collision when spheres are exactly touching', () => {
+    it('should detect collision when spheres are exactly touching', async () => {
       const mass = 10;
       const radius = Math.sqrt(mass);
       const particle1 = new Particle(
@@ -119,12 +119,12 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(1);
     });
 
-    it('should detect collision when sphere centers overlap', () => {
+    it('should detect collision when sphere centers overlap', async () => {
       const particle1 = new Particle(
         new Vector3D(0, 0, 0),
         Vector3D.zero(),
@@ -137,12 +137,12 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(particle1.radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(1);
     });
 
-    it('should detect collision when small sphere is inside large sphere', () => {
+    it('should detect collision when small sphere is inside large sphere', async () => {
       const largeParticle = new Particle(
         new Vector3D(0, 0, 0),
         Vector3D.zero(),
@@ -155,14 +155,14 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(largeParticle.radius * 2);
-      const collisions = detector.detectCollisions([largeParticle, smallParticle]);
+      const collisions = await detector.detectCollisions([largeParticle, smallParticle]);
 
       expect(collisions.length).toBe(1);
     });
   });
 
   describe('Spatial hash with 3D positions', () => {
-    it('should handle particles at 3D cell boundaries', () => {
+    it('should handle particles at 3D cell boundaries', async () => {
       const cellSize = 10;
       const detector = new CollisionDetector(cellSize);
 
@@ -178,11 +178,11 @@ describe('3D CollisionDetector Edge Cases', () => {
         5
       );
 
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
       expect(collisions.length).toBe(1);
     });
 
-    it('should detect collisions across different z-levels', () => {
+    it('should detect collisions across different z-levels', async () => {
       const particles = [
         new Particle(new Vector3D(0, 0, 0), Vector3D.zero(), 10),
         new Particle(new Vector3D(0, 0, 5), Vector3D.zero(), 10),
@@ -190,43 +190,43 @@ describe('3D CollisionDetector Edge Cases', () => {
       ];
 
       const detector = new CollisionDetector(Math.sqrt(10) * 2);
-      const collisions = detector.detectCollisions(particles);
+      const collisions = await detector.detectCollisions(particles);
 
       // Should detect 2 collisions: (0,1) and (1,2)
       expect(collisions.length).toBe(2);
     });
 
-    it('should not produce duplicate collision pairs in 3D', () => {
+    it('should not produce duplicate collision pairs in 3D', async () => {
       const particles = [
         new Particle(new Vector3D(0, 0, 0), Vector3D.zero(), 10),
         new Particle(new Vector3D(5, 0, 0), Vector3D.zero(), 10)
       ];
 
       const detector = new CollisionDetector(Math.sqrt(10) * 2);
-      const collisions = detector.detectCollisions(particles);
+      const collisions = await detector.detectCollisions(particles);
 
       // Should only detect one collision, not duplicates
       expect(collisions.length).toBe(1);
     });
 
-    it('should handle empty entity list', () => {
+    it('should handle empty entity list', async () => {
       const detector = new CollisionDetector(10);
-      const collisions = detector.detectCollisions([]);
+      const collisions = await detector.detectCollisions([]);
 
       expect(collisions.length).toBe(0);
     });
 
-    it('should handle single entity', () => {
+    it('should handle single entity', async () => {
       const detector = new CollisionDetector(10);
       const particle = new Particle(new Vector3D(0, 0, 0), Vector3D.zero(), 10);
-      const collisions = detector.detectCollisions([particle]);
+      const collisions = await detector.detectCollisions([particle]);
 
       expect(collisions.length).toBe(0);
     });
   });
 
   describe('Multiple simultaneous collisions in 3D', () => {
-    it('should detect all collisions in a 3D cluster', () => {
+    it('should detect all collisions in a 3D cluster', async () => {
       // Create particles in a 3D cube formation
       const mass = 10;
       const radius = Math.sqrt(mass);
@@ -240,13 +240,13 @@ describe('3D CollisionDetector Edge Cases', () => {
       ];
 
       const detector = new CollisionDetector(radius * 2);
-      const collisions = detector.detectCollisions(particles);
+      const collisions = await detector.detectCollisions(particles);
 
       // Should detect 3 collisions: (0,1), (0,2), (0,3)
       expect(collisions.length).toBe(3);
     });
 
-    it('should detect collisions in a dense 3D cluster', () => {
+    it('should detect collisions in a dense 3D cluster', async () => {
       // Create many particles in a small 3D volume
       const particles: Particle[] = [];
       const mass = 10;
@@ -269,7 +269,7 @@ describe('3D CollisionDetector Edge Cases', () => {
       }
 
       const detector = new CollisionDetector(radius * 2);
-      const collisions = detector.detectCollisions(particles);
+      const collisions = await detector.detectCollisions(particles);
 
       // Should detect multiple collisions in the cluster
       expect(collisions.length).toBeGreaterThan(0);
@@ -277,7 +277,7 @@ describe('3D CollisionDetector Edge Cases', () => {
   });
 
   describe('High velocity collisions in 3D', () => {
-    it('should detect collision between fast-moving particles in 3D', () => {
+    it('should detect collision between fast-moving particles in 3D', async () => {
       const particle1 = new Particle(
         new Vector3D(0, 0, 0),
         new Vector3D(1000, 500, 250), // Very high velocity in 3D
@@ -290,7 +290,7 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(particle1.radius * 2);
-      const collisions = detector.detectCollisions([particle1, particle2]);
+      const collisions = await detector.detectCollisions([particle1, particle2]);
 
       expect(collisions.length).toBe(1);
       expect(collisions[0].entity1.id).toBe(particle1.id);
@@ -299,7 +299,7 @@ describe('3D CollisionDetector Edge Cases', () => {
   });
 
   describe('Extreme mass differences in 3D', () => {
-    it('should detect collision between very large and very small particles', () => {
+    it('should detect collision between very large and very small particles', async () => {
       const largeParticle = new Particle(
         new Vector3D(0, 0, 0),
         Vector3D.zero(),
@@ -312,7 +312,7 @@ describe('3D CollisionDetector Edge Cases', () => {
       );
 
       const detector = new CollisionDetector(largeParticle.radius * 2);
-      const collisions = detector.detectCollisions([largeParticle, smallParticle]);
+      const collisions = await detector.detectCollisions([largeParticle, smallParticle]);
 
       expect(collisions.length).toBe(1);
     });
