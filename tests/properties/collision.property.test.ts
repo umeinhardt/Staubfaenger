@@ -9,9 +9,9 @@ import { Vector3D } from '../../src/core/Vector3D';
 // Validates: Anforderung 7.1, 3.4
 
 describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
-  it('should detect collision when particles are touching (distance = sum of radii)', () => {
-    fc.assert(
-      fc.property(
+  it('should detect collision when particles are touching (distance = sum of radii)', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.record({
           mass1: fc.double({ min: 0.1, max: 1000, noNaN: true }),
           mass2: fc.double({ min: 0.1, max: 1000, noNaN: true }),
@@ -21,7 +21,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           theta: fc.double({ min: 0, max: Math.PI, noNaN: true }),
           phi: fc.double({ min: 0, max: 2 * Math.PI, noNaN: true })
         }),
-        (data) => {
+        async (data) => {
           // Create first particle at given position
           const particle1 = new Particle(
             new Vector3D(data.posX, data.posY, data.posZ),
@@ -54,7 +54,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           const detector = new CollisionDetector((particle1.radius + particle2.radius) * 3);
 
           // Should detect collision when particles are exactly touching
-          const collisions = detector.detectCollisions([particle1, particle2]);
+          const collisions = await detector.detectCollisions([particle1, particle2]);
           expect(collisions.length).toBeGreaterThanOrEqual(1);
           
           // Verify the collision pair contains both particles
@@ -68,9 +68,9 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
     );
   });
 
-  it('should detect collision when particles are overlapping (distance < sum of radii)', () => {
-    fc.assert(
-      fc.property(
+  it('should detect collision when particles are overlapping (distance < sum of radii)', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.record({
           mass1: fc.double({ min: 0.1, max: 1000, noNaN: true }),
           mass2: fc.double({ min: 0.1, max: 1000, noNaN: true }),
@@ -81,7 +81,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           phi: fc.double({ min: 0, max: 2 * Math.PI, noNaN: true }),
           overlapFactor: fc.double({ min: 0.1, max: 0.9, noNaN: true })
         }),
-        (data) => {
+        async (data) => {
           // Create first particle
           const particle1 = new Particle(
             new Vector3D(data.posX, data.posY, data.posZ),
@@ -108,7 +108,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           const detector = new CollisionDetector((particle1.radius + particle2.radius) * 3);
 
           // Should detect collision when particles are overlapping
-          const collisions = detector.detectCollisions([particle1, particle2]);
+          const collisions = await detector.detectCollisions([particle1, particle2]);
           expect(collisions.length).toBeGreaterThanOrEqual(1);
         }
       ),
@@ -116,9 +116,9 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
     );
   });
 
-  it('should NOT detect collision when particles are separated (distance > sum of radii)', () => {
-    fc.assert(
-      fc.property(
+  it('should NOT detect collision when particles are separated (distance > sum of radii)', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.record({
           mass1: fc.double({ min: 0.1, max: 1000, noNaN: true }),
           mass2: fc.double({ min: 0.1, max: 1000, noNaN: true }),
@@ -129,7 +129,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           phi: fc.double({ min: 0, max: 2 * Math.PI, noNaN: true }),
           separationFactor: fc.double({ min: 1.1, max: 10, noNaN: true })
         }),
-        (data) => {
+        async (data) => {
           // Create first particle
           const particle1 = new Particle(
             new Vector3D(data.posX, data.posY, data.posZ),
@@ -156,7 +156,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           const detector = new CollisionDetector((particle1.radius + particle2.radius) * 3);
 
           // Should NOT detect collision when particles are separated
-          const collisions = detector.detectCollisions([particle1, particle2]);
+          const collisions = await detector.detectCollisions([particle1, particle2]);
           expect(collisions.length).toBe(0);
         }
       ),
@@ -166,9 +166,9 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
 
   // NOTE: Conglomerate collision tests are commented out until task 6 updates Conglomerate to 3D
 
-  it('should detect all collisions in a group of multiple particles', () => {
-    fc.assert(
-      fc.property(
+  it('should detect all collisions in a group of multiple particles', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.record({
           centerX: fc.double({ min: -1000, max: 1000, noNaN: true }),
           centerY: fc.double({ min: -1000, max: 1000, noNaN: true }),
@@ -176,7 +176,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           numParticles: fc.integer({ min: 3, max: 10 }),
           mass: fc.double({ min: 1, max: 100, noNaN: true })
         }),
-        (data) => {
+        async (data) => {
           // Create particles in a tight cluster (all overlapping)
           const particles: Particle[] = [];
           const radius = Math.sqrt(data.mass);
@@ -205,7 +205,7 @@ describe('Property 8: Konglomerat-Bildung bei Kontakt', () => {
           const detector = new CollisionDetector(radius * 4);
 
           // Should detect multiple collisions
-          const collisions = detector.detectCollisions(particles);
+          const collisions = await detector.detectCollisions(particles);
           expect(collisions.length).toBeGreaterThan(0);
           
           // Each collision should involve different entities

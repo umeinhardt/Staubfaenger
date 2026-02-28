@@ -15,9 +15,9 @@ describe('Boundary Property Tests', () => {
     fc.assert(
       fc.property(
         fc.record({
-          x: fc.float({ min: -200, max: 200 }),
-          y: fc.float({ min: -200, max: 200 }),
-          z: fc.float({ min: -200, max: 200 })
+          x: fc.double({ min: -200, max: 200, noNaN: true }),
+          y: fc.double({ min: -200, max: 200, noNaN: true }),
+          z: fc.double({ min: -200, max: 200, noNaN: true })
         }),
         (pos) => {
           const boundary = createBoundary();
@@ -71,19 +71,19 @@ describe('Boundary Property Tests', () => {
     fc.assert(
       fc.property(
         fc.record({
-          x: fc.float({ min: -200, max: 200 }),
-          y: fc.float({ min: -200, max: 200 }),
-          z: fc.float({ min: -200, max: 200 })
+          x: fc.double({ min: -200, max: 200, noNaN: true }),
+          y: fc.double({ min: -200, max: 200, noNaN: true }),
+          z: fc.double({ min: -200, max: 200, noNaN: true })
         }),
         fc.record({
-          vx: fc.float({ min: -10, max: 10 }),
-          vy: fc.float({ min: -10, max: 10 }),
-          vz: fc.float({ min: -10, max: 10 })
+          vx: fc.double({ min: -10, max: 10, noNaN: true }),
+          vy: fc.double({ min: -10, max: 10, noNaN: true }),
+          vz: fc.double({ min: -10, max: 10, noNaN: true })
         }),
         fc.record({
-          wx: fc.float({ min: -5, max: 5 }),
-          wy: fc.float({ min: -5, max: 5 }),
-          wz: fc.float({ min: -5, max: 5 })
+          wx: fc.double({ min: -5, max: 5, noNaN: true }),
+          wy: fc.double({ min: -5, max: 5, noNaN: true }),
+          wz: fc.double({ min: -5, max: 5, noNaN: true })
         }),
         (pos, vel, angVel) => {
           const boundary = createBoundary();
@@ -149,7 +149,7 @@ describe('Boundary Property Tests', () => {
   it('should give spawned particles inward-pointing velocity', () => {
     fc.assert(
       fc.property(
-        fc.float({ min: 0.1, max: 10 }),
+        fc.double({ min: Math.fround(0.1), max: Math.fround(10), noNaN: true }),
         (speed) => {
           const boundary = createBoundary();
           const spawnPosition = boundary.getRandomSpawnPosition();

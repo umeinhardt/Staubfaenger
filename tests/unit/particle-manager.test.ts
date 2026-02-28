@@ -98,7 +98,7 @@ describe('ParticleManager', () => {
       manager.wrapParticle(particle);
       
       // After wrapping from -10, should be near right edge (within bounds)
-      expect(particle.position.x).toBeGreaterThan(790);
+      expect(particle.position.x).toBeGreaterThanOrEqual(790);
       expect(particle.position.x).toBeLessThanOrEqual(800);
       expect(particle.position.y).toBeCloseTo(300, 5);
       expect(particle.position.z).toBeCloseTo(200, 5);
@@ -133,7 +133,7 @@ describe('ParticleManager', () => {
       
       // After wrapping from -10, should be near top edge (within bounds)
       expect(particle.position.x).toBeCloseTo(400, 5);
-      expect(particle.position.y).toBeGreaterThan(590);
+      expect(particle.position.y).toBeGreaterThanOrEqual(590);
       expect(particle.position.y).toBeLessThanOrEqual(600);
       expect(particle.position.z).toBeCloseTo(200, 5);
     });

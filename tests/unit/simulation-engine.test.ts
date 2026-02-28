@@ -7,198 +7,7 @@ import { Renderer, RenderConfig } from '../../src/core/Renderer';
 import { NewtonianGravity } from '../../src/core/GravityFormula';
 import { Boundary } from '../../src/core/Boundary';
 import { Vector3D } from '../../src/core/Vector3D';
-
-// Mock canvas and context with all required methods for Three.js WebGLRenderer
-class MockHTMLCanvasElement {
-  width: number = 800;
-  height: number = 600;
-  style: any = {};
-  
-  addEventListener = vi.fn();
-  removeEventListener = vi.fn();
-  dispatchEvent = vi.fn();
-  getBoundingClientRect = vi.fn(() => ({
-    left: 0,
-    top: 0,
-    width: this.width,
-    height: this.height,
-    right: this.width,
-    bottom: this.height,
-    x: 0,
-    y: 0,
-    toJSON: () => ({})
-  }));
-  getRootNode = vi.fn(() => ({
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn()
-  }));
-  
-  ownerDocument = {
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    createElement: vi.fn(() => ({
-      getContext: vi.fn(() => null)
-    }))
-  };
-
-  getContext(contextType: string, options?: any): any {
-    if (contextType === 'webgl' || contextType === 'webgl2') {
-      return {
-        canvas: this,
-        drawingBufferWidth: this.width,
-        drawingBufferHeight: this.height,
-        getParameter: (param: number) => {
-          // Return mock values for common WebGL parameters
-          // String parameters
-          if (param === 0x1F00 || param === 7936) return 'WebGL 2.0'; // VERSION
-          if (param === 0x1F01 || param === 35724) return 'WebGL GLSL ES 3.00'; // SHADING_LANGUAGE_VERSION
-          if (param === 0x1F02 || param === 7937) return 'WebKit'; // VENDOR
-          if (param === 0x1F03 || param === 7938) return 'WebKit WebGL'; // RENDERER
-          // Numeric parameters
-          if (param === 0x8B4C || param === 35660) return 16; // MAX_VERTEX_ATTRIBS
-          if (param === 0x8869 || param === 34921) return 16; // MAX_TEXTURE_IMAGE_UNITS
-          if (param === 0x8DFB || param === 36347) return 16; // MAX_COLOR_ATTACHMENTS
-          if (param === 0x8824 || param === 34852) return 16384; // MAX_TEXTURE_SIZE
-          if (param === 0x851C || param === 34076) return 16384; // MAX_CUBE_MAP_TEXTURE_SIZE
-          if (param === 0x8073 || param === 32883) return new Int32Array([8192, 8192]); // MAX_VIEWPORT_DIMS
-          if (param === 0x0D33 || param === 3379) return 4; // MAX_TEXTURE_STACK_DEPTH
-          if (param === 0x80E9 || param === 33001) return 4; // MAX_RENDERBUFFER_SIZE
-          if (param === 0x8872 || param === 34930) return 8; // MAX_COMBINED_TEXTURE_IMAGE_UNITS
-          if (param === 0x8B4D || param === 35661) return 16; // MAX_VERTEX_UNIFORM_VECTORS
-          if (param === 0x8DFD || param === 36349) return 16; // MAX_VARYING_VECTORS
-          if (param === 0x8B49 || param === 35657) return 16; // MAX_FRAGMENT_UNIFORM_VECTORS
-          if (param === 0x8B4A || param === 35658) return 8; // MAX_VERTEX_TEXTURE_IMAGE_UNITS
-          // Default
-          return 0;
-        },
-        getShaderPrecisionFormat: vi.fn(() => ({
-          precision: 23,
-          rangeMin: 127,
-          rangeMax: 127
-        })),
-        getExtension: vi.fn((name) => {
-          // Return mock extensions
-          if (name === 'WEBGL_depth_texture') return {};
-          if (name === 'OES_texture_float') return {};
-          if (name === 'OES_texture_half_float') return {};
-          if (name === 'OES_standard_derivatives') return {};
-          if (name === 'EXT_shader_texture_lod') return {};
-          if (name === 'EXT_texture_filter_anisotropic') return {};
-          if (name === 'WEBGL_compressed_texture_s3tc') return {};
-          if (name === 'WEBGL_compressed_texture_pvrtc') return {};
-          if (name === 'WEBGL_compressed_texture_etc1') return {};
-          return null;
-        }),
-        getContextAttributes: vi.fn(() => ({
-          alpha: true,
-          antialias: true,
-          depth: true,
-          stencil: false,
-          premultipliedAlpha: true,
-          preserveDrawingBuffer: false
-        })),
-        createShader: vi.fn(() => ({})),
-        shaderSource: vi.fn(),
-        compileShader: vi.fn(),
-        getShaderParameter: vi.fn(() => true),
-        createProgram: vi.fn(() => ({})),
-        attachShader: vi.fn(),
-        linkProgram: vi.fn(),
-        getProgramParameter: vi.fn(() => true),
-        useProgram: vi.fn(),
-        createBuffer: vi.fn(() => ({})),
-        bindBuffer: vi.fn(),
-        bufferData: vi.fn(),
-        createTexture: vi.fn(() => ({})),
-        bindTexture: vi.fn(),
-        texImage2D: vi.fn(),
-        texImage3D: vi.fn(),
-        texParameteri: vi.fn(),
-        createFramebuffer: vi.fn(() => ({})),
-        bindFramebuffer: vi.fn(),
-        framebufferTexture2D: vi.fn(),
-        createRenderbuffer: vi.fn(() => ({})),
-        bindRenderbuffer: vi.fn(),
-        renderbufferStorage: vi.fn(),
-        framebufferRenderbuffer: vi.fn(),
-        checkFramebufferStatus: vi.fn(() => 0x8CD5), // FRAMEBUFFER_COMPLETE
-        viewport: vi.fn(),
-        clear: vi.fn(),
-        clearColor: vi.fn(),
-        clearDepth: vi.fn(),
-        clearStencil: vi.fn(),
-        enable: vi.fn(),
-        disable: vi.fn(),
-        depthFunc: vi.fn(),
-        depthMask: vi.fn(),
-        colorMask: vi.fn(),
-        stencilMask: vi.fn(),
-        blendFunc: vi.fn(),
-        blendEquation: vi.fn(),
-        cullFace: vi.fn(),
-        frontFace: vi.fn(),
-        lineWidth: vi.fn(),
-        polygonOffset: vi.fn(),
-        scissor: vi.fn(),
-        drawArrays: vi.fn(),
-        drawElements: vi.fn(),
-        getUniformLocation: vi.fn(() => ({})),
-        uniform1f: vi.fn(),
-        uniform1i: vi.fn(),
-        uniform2f: vi.fn(),
-        uniform3f: vi.fn(),
-        uniform4f: vi.fn(),
-        uniformMatrix4fv: vi.fn(),
-        getAttribLocation: vi.fn(() => 0),
-        vertexAttribPointer: vi.fn(),
-        enableVertexAttribArray: vi.fn(),
-        disableVertexAttribArray: vi.fn(),
-        getShaderInfoLog: vi.fn(() => ''),
-        getProgramInfoLog: vi.fn(() => ''),
-        getActiveUniform: vi.fn(() => ({ name: 'test', size: 1, type: 0x1406 })),
-        getActiveAttrib: vi.fn(() => ({ name: 'test', size: 1, type: 0x1406 })),
-        createVertexArray: vi.fn(() => ({})),
-        bindVertexArray: vi.fn(),
-        deleteVertexArray: vi.fn(),
-        deleteShader: vi.fn(),
-        deleteProgram: vi.fn(),
-        deleteBuffer: vi.fn(),
-        deleteTexture: vi.fn(),
-        deleteFramebuffer: vi.fn(),
-        deleteRenderbuffer: vi.fn(),
-        isContextLost: vi.fn(() => false),
-        getSupportedExtensions: vi.fn(() => [
-          'WEBGL_depth_texture',
-          'OES_texture_float',
-          'OES_texture_half_float',
-          'OES_standard_derivatives',
-          'EXT_shader_texture_lod',
-          'EXT_texture_filter_anisotropic'
-        ]),
-        pixelStorei: vi.fn(),
-        readPixels: vi.fn(),
-        texSubImage2D: vi.fn(),
-        compressedTexImage2D: vi.fn(),
-        compressedTexSubImage2D: vi.fn(),
-        generateMipmap: vi.fn(),
-        activeTexture: vi.fn(),
-        blendFuncSeparate: vi.fn(),
-        blendEquationSeparate: vi.fn(),
-        stencilFunc: vi.fn(),
-        stencilOp: vi.fn(),
-        stencilFuncSeparate: vi.fn(),
-        stencilOpSeparate: vi.fn(),
-        finish: vi.fn(),
-        flush: vi.fn(),
-        hint: vi.fn(),
-        isEnabled: vi.fn(() => false),
-        depthRange: vi.fn(),
-        sampleCoverage: vi.fn()
-      };
-    }
-    return null;
-  }
-}
+import { JSDOM } from 'jsdom';
 
 describe('SimulationEngine', () => {
   let simulationEngine: SimulationEngine;
@@ -207,10 +16,35 @@ describe('SimulationEngine', () => {
   let physicsEngine: PhysicsEngine;
   let renderer: Renderer;
   let config: SimulationConfig;
+  let canvas: HTMLCanvasElement;
 
   beforeEach(() => {
-    // Create mock canvas
-    const canvas = new MockHTMLCanvasElement();
+    // Setup JSDOM for canvas
+    const dom = new JSDOM('<!DOCTYPE html><canvas id="testCanvas"></canvas>');
+    global.document = dom.window.document as any;
+    global.HTMLCanvasElement = dom.window.HTMLCanvasElement as any;
+    
+    // Mock canvas context
+    const mockContext = {
+      fillStyle: '',
+      strokeStyle: '',
+      lineWidth: 0,
+      fillRect: () => {},
+      beginPath: () => {},
+      arc: () => {},
+      fill: () => {},
+      stroke: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+    };
+    
+    HTMLCanvasElement.prototype.getContext = function() {
+      return mockContext as any;
+    };
+    
+    canvas = dom.window.document.getElementById('testCanvas') as any;
+    canvas.width = 800;
+    canvas.height = 600;
 
     // Create bounds
     const bounds = new Boundary(
@@ -244,7 +78,7 @@ describe('SimulationEngine', () => {
     particleManager = new ParticleManager(bounds, spawnConfig);
     collisionDetector = new CollisionDetector(50);
     physicsEngine = new PhysicsEngine(new NewtonianGravity(1.0), 0);
-    renderer = new Renderer(canvas as any, renderConfig);
+    renderer = new Renderer(canvas, renderConfig);
 
     // Create simulation engine
     simulationEngine = new SimulationEngine(
