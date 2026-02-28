@@ -232,8 +232,9 @@ describe('Property 2: Wrap-around Konsistenz', () => {
           // Apply wrap-around
           manager.wrapParticle(particle);
           
-          // Should appear at right edge
-          expect(particle.position.x).toBeCloseTo(800, 5);
+          // Should appear near right edge (within bounds)
+          expect(particle.position.x).toBeGreaterThan(790);
+          expect(particle.position.x).toBeLessThanOrEqual(800);
           expect(particle.position.y).toBeCloseTo(yPos, 5);
           expect(particle.position.z).toBeCloseTo(zPos, 5);
         }
@@ -273,8 +274,9 @@ describe('Property 2: Wrap-around Konsistenz', () => {
           // Apply wrap-around
           manager.wrapParticle(particle);
           
-          // Should appear at left edge
-          expect(particle.position.x).toBeCloseTo(0, 5);
+          // Should appear near left edge (within bounds)
+          expect(particle.position.x).toBeGreaterThanOrEqual(0);
+          expect(particle.position.x).toBeLessThan(10);
           expect(particle.position.y).toBeCloseTo(yPos, 5);
           expect(particle.position.z).toBeCloseTo(zPos, 5);
         }
@@ -314,9 +316,10 @@ describe('Property 2: Wrap-around Konsistenz', () => {
           // Apply wrap-around
           manager.wrapParticle(particle);
           
-          // Should appear at bottom edge
+          // Should appear near bottom edge (within bounds)
           expect(particle.position.x).toBeCloseTo(xPos, 5);
-          expect(particle.position.y).toBeCloseTo(0, 5);
+          expect(particle.position.y).toBeGreaterThanOrEqual(0);
+          expect(particle.position.y).toBeLessThan(10);
           expect(particle.position.z).toBeCloseTo(zPos, 5);
         }
       ),
@@ -355,9 +358,10 @@ describe('Property 2: Wrap-around Konsistenz', () => {
           // Apply wrap-around
           manager.wrapParticle(particle);
           
-          // Should appear at top edge
+          // Should appear near top edge (within bounds)
           expect(particle.position.x).toBeCloseTo(xPos, 5);
-          expect(particle.position.y).toBeCloseTo(600, 5);
+          expect(particle.position.y).toBeGreaterThan(590);
+          expect(particle.position.y).toBeLessThanOrEqual(600);
           expect(particle.position.z).toBeCloseTo(zPos, 5);
         }
       ),

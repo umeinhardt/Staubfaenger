@@ -57,6 +57,11 @@ class MockHTMLCanvasElement {
           if (param === 0x8073) return 8192; // MAX_VIEWPORT_DIMS
           return 0;
         }),
+        getShaderPrecisionFormat: vi.fn(() => ({
+          precision: 23,
+          rangeMin: 127,
+          rangeMax: 127
+        })),
         getExtension: vi.fn(() => null),
         getContextAttributes: vi.fn(() => ({
           alpha: true,
